@@ -1,0 +1,13 @@
+{
+ [
+    "src/*"
+    @TEST_SRC@
+ ],
+ [
+    report,
+    debug_info,
+    {i, "include"},
+    {outdir, "@EBIN_DIR@"}
+    @TEST_OPT@
+ ]
+}.

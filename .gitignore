@@ -1,0 +1,6 @@
+ebin/
+docs/
+reports/
+include/version.hrl
+Emakefile
+erl_crash.dump

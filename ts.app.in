@@ -1,0 +1,10 @@
+{application, ts,
+ [
+  {description, "Telephone Server"},
+  {vsn, "@APP_VSN@"},
+  {modules, [@MOD_LIST@]},
+  {applications, [kernel, stdlib]},
+  {registered, [ts_sup]},
+  {mod, {ts_app, []}}
+ ]
+}.
