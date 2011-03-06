@@ -52,9 +52,9 @@ start_child() ->
 %% @doc Supervisor behaviour init callback.  Spawns worker processes
 %%    to handle incoming TCP connections.
 init([] = _Args) ->
-	SocketParams = [binary, {active, false}, {reuseaddr, true}],
+    SocketParams = [binary, {active, false}, {reuseaddr, true}],
     {ok, Socket} = gen_tcp:listen(ts_cfg:get_key(listen_port), SocketParams),
-	
+
     Server = {tcp_server, {tcp_server, start_link, [Socket]},
               temporary, brutal_kill, worker, [tcp_server]},
     {ok, {{simple_one_for_one, 0, 1}, [Server]}}.
