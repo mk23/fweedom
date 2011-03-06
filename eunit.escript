@@ -9,7 +9,7 @@ main(Mods) ->
         case code:ensure_loaded(Mod) of
             {module, Mod} ->
                 io:format("~s:~n", [Str]),
-		eunit:test(list_to_atom(Str), [{report, {eunit_surefire, [{dir, "reports"}]}}]);
+                eunit:test(list_to_atom(Str), [{report, {eunit_surefire, [{dir, "reports"}]}}]);
             {error,nofile} ->
                 io:format("~s: no tests~n", [Str])
         end
