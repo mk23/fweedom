@@ -21,6 +21,7 @@
 %% @spec start() -> ok
 %% @doc Starts the main application.
 start() ->
+    application:start(sasl),
     application:start(ts, permanent).
 
 %% @spec stop() -> ok

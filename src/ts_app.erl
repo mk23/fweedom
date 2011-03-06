@@ -26,7 +26,12 @@
 %%    Args = term()
 %% @doc Application behaviour start callback.  Starts the top-level supervisor.
 start(normal = _Type, _Args) ->
-    ts_sup:start_link().
+    {ok, Pid} = ts_sup:start_link(),
+    ts_cfg:start(),
+%    ts_log:start(),
+    tcp_sup:start(),
+    tcp_sup:start_child(),
+    {ok, Pid}.
 
 %% @spec stop(State) -> ok
 %% where

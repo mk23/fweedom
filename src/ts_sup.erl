@@ -7,7 +7,7 @@
 %%   documentation for more information.
 %%
 %% @doc telephone-server - Top-level supervisor controller.
-%%   This module provides the necessary callbacks to create the root of the supervisor tree.
+%%   This module provides all necessary callbacks to create the root of the supervisor tree.
 %%
 %% @type supervisor_result() = term().  Please see OTP
 %%    <a href="http://www.erlang.org/doc/man/supervisor.html#Module:init-1" target="_blank">documentation</a>
@@ -37,6 +37,4 @@ start_link() ->
 %% @doc Supervisor behaviour init callback. Starts the TCP listener supervisor,
 %%    the store server worker, and the stats server worker.
 init([] = _Args) ->
-    TCPSup = {tcp_sup, {tcp_sup, start_link, []},
-              permanent, 2000, supervisor, [tcp_sup]},
-    {ok, {{one_for_one, 0, 1}, [TCPSup]}}.
+    {ok, {{one_for_one, 0, 1}, []}}.

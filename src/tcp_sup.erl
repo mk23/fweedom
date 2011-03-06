@@ -18,20 +18,28 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_child/0]).
+-export([start/0, start_link/0, start_child/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
 -include("ts.hrl").
 
+start() ->
+    ChildSpec = {?MODULE,
+        {?MODULE, start_link, []},
+        permanent,
+        infinity,
+        supervisor,
+        [?MODULE]
+    },
+    supervisor:start_child(ts_sup, ChildSpec).
+
 %% @spec start_link() -> {ok, pid()}
 %% @doc Called by the root supervisor and starts the TCP supervisor process.
 %%    Calls {@module}:init/1 in the spawned process.
 start_link() ->
-    {ok, Pid} = supervisor:start_link({local, ?MODULE}, ?MODULE, []),
-	start_child(),
-	{ok, Pid}.
+    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 %% @spec start_child() -> {ok, pid()}
 %% @doc Called by TCP worker handlers to start new handlers.
@@ -45,7 +53,7 @@ start_child() ->
 %%    to handle incoming TCP connections.
 init([] = _Args) ->
 	SocketParams = [binary, {active, false}, {reuseaddr, true}],
-    {ok, Socket} = gen_tcp:listen(?DEFAULT_PORT, SocketParams),
+    {ok, Socket} = gen_tcp:listen(ts_cfg:get_key(listen_port), SocketParams),
 	
     Server = {tcp_server, {tcp_server, start_link, [Socket]},
               temporary, brutal_kill, worker, [tcp_server]},
