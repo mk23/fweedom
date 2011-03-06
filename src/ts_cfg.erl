@@ -130,7 +130,10 @@ handle_cast({set_mod, Key, Value}, State) ->
     {noreply, State#state{mods = dict:store(Key, Value, State#state.mods)}};
 
 handle_cast(reload, State) ->
-    {noreply, State#state{conf = read_config()}}.
+    {noreply, State#state{conf = read_config()}};
+
+handle_cast(stop, State) ->
+    {stop, normal, State}.
 
 
 handle_call({get_key, Key, Default}, _From, State) ->
@@ -150,7 +153,7 @@ handle_call({get_mod, Key, Default}, _From, State) ->
     end.
 
 
-code_change(_OldVsn, _NewVsn, State) ->
+code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 

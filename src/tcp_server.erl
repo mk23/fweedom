@@ -35,9 +35,12 @@
     terminate/2
 ]).
 
+-include("ts.hrl").
+
 -record(state, {socket, module, client}).
 
 start_link({Socket, Module}) ->
+    ?LOG_DEBUG("starting tcp server for: ~p", [Module]),
     gen_server:start_link(?MODULE, [Socket, Module], []);
 
 start_link(Socket) ->
@@ -47,31 +50,36 @@ start_link(Socket) ->
 init([Socket, Module]) ->
     {ok, #state{socket = Socket, module = Module, client = {}}, 0}.
 
+
 handle_info({tcp, Socket, Packet}, State) ->
-	Module = State#state.module,
-	Client = Module:handle_data(Socket, Packet, State#state.client),
-	inet:setopts(Socket, [{active, once}]),
+    Module = State#state.module,
+    Client = Module:handle_data(Socket, Packet, State#state.client),
+    ?LOG_DEBUG("received data from client: ~p: ~p", [Socket, Packet]),
+    inet:setopts(Socket, [{active, once}]),
     {noreply, State#state{client = Client}};
 
-handle_info({tcp_closed, _Socket}, State) ->
+handle_info({tcp_closed, Socket}, State) ->
+    ?LOG_INFO("client disconnected: ~p", [Socket]),
     {stop, normal, State};
 
 handle_info(timeout, State) ->
     {ok, Socket} = gen_tcp:accept(State#state.socket),
-	inet:setopts(Socket, [{active, once}]),
+    ?LOG_INFO("new client connected: ~p", [Socket]),
+    inet:setopts(Socket, [{active, once}]),
     tcp_sup:start_child(),
     {noreply, State}.
 
 handle_cast(stop, State) ->
-    {stop, normal, State};
-handle_cast(_, State) ->
-	{noreply, State}.
+    {stop, normal, State}.
 
-handle_call(_, _From, State) ->
+
+handle_call(_Req, _From, State) ->
     {reply, ok, State}.
 
-code_change(_, _, State) ->
+
+code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
 
 terminate(Reason, _State) ->
     {ok, Reason}.

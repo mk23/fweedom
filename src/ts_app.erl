@@ -28,7 +28,9 @@
 start(normal = _Type, _Args) ->
     {ok, Pid} = ts_sup:start_link(),
     ts_cfg:start(),
-%    ts_log:start(),
+    ts_log:start(),
+    ts_log:set_level(ts_cfg:get_key(log_level)),
+
     tcp_sup:start(),
     tcp_sup:start_child(),
     {ok, Pid}.
