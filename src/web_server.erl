@@ -13,11 +13,22 @@
 -module(web_server).
 
 -export([handle_data/3]).
+-export([uri_register/2, uri_register/3]).
 
 -include("ts.hrl").
 
 -record(uri, {scheme = http, host, port = ts_cfg:get_key(listen_port), path}).
 -record(state, {s, method, module, uri = #uri{}, qry = [], vsn = {1, 0}, head = [], body = <<>>, left = 0}).
+
+uri_register(Path, Module) ->
+    uri_register(Path, Module, all).
+
+uri_register([$/|_] = Path, Module, Methods) ->
+    ?LOG_INFO("registered uri handler: ~p by ~p for ~p", [Path, Module, Methods]),
+    ts_cfg:add_mod(uri_handlers, <<Path/bytes>>, {Module, Methods});
+uri_register(Path, Module, Methods) ->
+    uri_register([$/|Path], Module, Methods).
+
 
 handle_data(Socket, Packet, new) ->
     ?LOG_DEBUG("handle_data() begin new web request processing", []),
@@ -37,11 +48,18 @@ read_packet({ok, {http_request, Method, Request, Vsn}, Packet}, State) ->
     {Uri, Qry} = parse_request(Request),
     ?LOG_DEBUG("read_packet() extracted request: ~p:~p", [Method, Request]),
     case lists:keyfind(Uri#uri.path, 1, ts_cfg:get_mod(uri_handlers, [])) of
-        {_, Module} ->
-            ?LOG_DEBUG("read_packet() found handler for request: ~p: ~p", [Uri#uri.path, Module]),
-            read_packet(erlang:decode_packet(httph_bin, Packet, []), State#state{method = Method, module = Module, uri = Uri, qry = Qry, vsn = Vsn});
+        {_, Module, Methods} ->
+            case Methods =:= all orelse lists:member(Method, Methods) of
+                true ->
+                    ?LOG_DEBUG("read_packet() found handler for request: ~p: ~p", [Uri#uri.path, Module]),
+                    read_packet(erlang:decode_packet(httph_bin, Packet, []), State#state{method = Method, module = Module, uri = Uri, qry = Qry, vsn = Vsn});
+                false ->
+                    ?LOG_DEBUG("read_packet() found unimplemented method ~p for request: ~p", [Method, Uri#uri.path]),
+                    send_packet(State#state.s, 501),
+                    gen_tcp:close(State#state.s)
+            end;
         _ ->
-            ?LOG_DEBUG("read_packet() found unimplemented request uri: ~p", [Uri#uri.path]),
+            ?LOG_DEBUG("read_packet() found unimplemented request: ~p", [Uri#uri.path]),
             send_packet(State#state.s, 501),
             gen_tcp:close(State#state.s)
     end;
