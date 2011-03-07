@@ -56,28 +56,28 @@ start() ->
 %%    that handles application configuration. Calls {@module}:init/1 in
 %%    the spawned process.
 start_link() ->
-    gen_server:start_link({global, ?MODULE}, ?MODULE, [], []).
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 get_key(Key) ->
     get_key(Key, undefined).
 
 get_key(Key, Def) ->
-    gen_server:call({global, ?MODULE}, {get_key, Key, Def}).
+    gen_server:call(?MODULE, {get_key, Key, Def}).
 
 set_key(Key, Val) ->
-    gen_server:cast({global, ?MODULE}, {set_key, Key, Val}).
+    gen_server:cast(?MODULE, {set_key, Key, Val}).
 
 get_mod(Key) ->
     get_mod(Key, undefined).
 
 get_mod(Key, Def) ->
-    gen_server:call({global, ?MODULE}, {get_mod, Key, Def}).
+    gen_server:call(?MODULE, {get_mod, Key, Def}).
 
 set_mod(Key, Val) ->
-    gen_server:cast({global, ?MODULE}, {set_mod, Key, Val}).
+    gen_server:cast(?MODULE, {set_mod, Key, Val}).
 
 reload() ->
-    gen_server:cast({global, ?MODULE}, reload).
+    gen_server:cast(?MODULE, reload).
 
 
 %% Internal functions
