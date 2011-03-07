@@ -20,7 +20,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1]).
+-export([start_link/1, start_link/2]).
 
 %% tcp_server callbacks
 -export([handle_data/3]).
@@ -37,37 +37,39 @@
 
 -include("ts.hrl").
 
--record(state, {socket, module, client}).
-
-start_link({Socket, Module}) ->
-    ?LOG_DEBUG("starting tcp server for: ~p", [Module]),
-    gen_server:start_link(?MODULE, [Socket, Module], []);
+-record(state, {socket, module, client = new, ready = false}).
 
 start_link(Socket) ->
-    start_link({Socket, ?MODULE}).
+    start_link(Socket, ?MODULE).
+
+start_link(Socket, Module) ->
+    ?LOG_DEBUG("starting tcp server for: ~p", [Module]),
+    gen_server:start_link(?MODULE, [Socket, Module], []).
 
 
 init([Socket, Module]) ->
-    {ok, #state{socket = Socket, module = Module, client = {}}, 0}.
+    {ok, #state{socket = Socket, module = Module}, 0}.
 
 
-handle_info({tcp, Socket, Packet}, State) ->
-    Module = State#state.module,
-    Client = Module:handle_data(Socket, Packet, State#state.client),
+handle_info({tcp, Socket, Packet}, #state{module = Module} = State) ->
     ?LOG_DEBUG("received data from client: ~p: ~p", [Socket, Packet]),
-    inet:setopts(Socket, [{active, once}]),
-    {noreply, State#state{client = Client}};
+    Client = Module:handle_data(Socket, Packet, State#state.client),
+    ?LOG_DEBUG("new client state from handler: ~p", [Client]),
+    {noreply, State#state{client = Client}, 0};
 
 handle_info({tcp_closed, Socket}, State) ->
     ?LOG_INFO("client disconnected: ~p", [Socket]),
     {stop, normal, State};
 
-handle_info(timeout, State) ->
+handle_info(timeout, #state{socket = Socket, ready = true} = State) ->
+    inet:setopts(Socket, [{active, once}]),
+    {noreply, State};
+
+handle_info(timeout, #state{ready = false} = State) ->
     {ok, Socket} = gen_tcp:accept(State#state.socket),
     ?LOG_INFO("new client connected: ~p", [Socket]),
-    inet:setopts(Socket, [{active, once}]),
     tcp_sup:start_child(),
-    {noreply, State}.
+    {noreply, State#state{socket = Socket, ready = true}, 0}.
 
 handle_cast(stop, State) ->
     {stop, normal, State}.
