@@ -23,6 +23,7 @@
     get_mod/1,
     get_mod/2,
     set_mod/2,
+    add_mod/2,
     reload/0
 ]).
 
@@ -76,6 +77,9 @@ get_mod(Key, Def) ->
 set_mod(Key, Val) ->
     gen_server:cast(?MODULE, {set_mod, Key, Val}).
 
+add_mod(Key, Val) ->
+    gen_server:cast(?MODULE, {add_mod, Key, Val}).
+
 reload() ->
     gen_server:cast(?MODULE, reload).
 
@@ -128,6 +132,9 @@ handle_cast({set_key, Key, Value}, State) ->
 
 handle_cast({set_mod, Key, Value}, State) ->
     {noreply, State#state{mods = dict:store(Key, Value, State#state.mods)}};
+
+handle_cast({add_mod, Key, Value}, State) ->
+    {noreply, State#state{mods = dict:append(Key, Value, State#state.mods)}};
 
 handle_cast(reload, State) ->
     {noreply, State#state{conf = read_config()}};
