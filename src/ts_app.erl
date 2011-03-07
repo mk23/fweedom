@@ -31,7 +31,7 @@ start(normal = _Type, _Args) ->
     ts_log:start(),
     ts_log:set_level(ts_cfg:get_key(log_level)),
 
-    tcp_sup:start(),
+    tcp_sup:start(web_server),
     tcp_sup:start_child(),
     {ok, Pid}.
 
