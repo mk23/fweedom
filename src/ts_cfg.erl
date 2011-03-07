@@ -78,7 +78,15 @@ set_mod(Key, Val) ->
     gen_server:cast(?MODULE, {set_mod, Key, Val}).
 
 add_mod(Key, Val) ->
-    gen_server:cast(?MODULE, {add_mod, Key, Val}).
+    Arr = get_mod(Key, []),
+    case catch lists:member(Val, Arr) of
+        false ->
+            gen_server:cast(?MODULE, {add_mod, Key, Val});
+        true ->
+            ?LOG_DEBUG("add_mod() found duplicate entry in list for key ~p: ~p", [Key, Val]);
+        _ ->
+            ?LOG_ERROR("add_mod() attempt to append value to non-list key ~p: ~p", [Key, Val])
+    end.
 
 reload() ->
     gen_server:cast(?MODULE, reload).
