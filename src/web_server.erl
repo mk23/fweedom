@@ -25,7 +25,7 @@ uri_register(Path, Module) ->
 
 uri_register([$/|_] = Path, Module, Methods) ->
     ?LOG_INFO("registered uri handler: ~p by ~p for ~p", [Path, Module, Methods]),
-    ts_cfg:add_mod(uri_handlers, <<Path/bytes>>, {Module, Methods});
+    ts_cfg:add_key(uri_handlers, <<Path/bytes>>, {Module, Methods});
 uri_register(Path, Module, Methods) ->
     uri_register([$/|Path], Module, Methods).
 
