@@ -47,7 +47,7 @@ read_packet({ok, http_eoh, <<>>}, #state{uri = #uri{path = Path}, left = 0} = St
 read_packet({ok, {http_request, Method, Request, Vsn}, Packet}, State) ->
     {Uri, Qry} = parse_request(Request),
     ?LOG_DEBUG("read_packet() extracted request: ~p:~p", [Method, Request]),
-    case lists:keyfind(Uri#uri.path, 1, ts_cfg:get_mod(uri_handlers, [])) of
+    case lists:keyfind(Uri#uri.path, 1, ts_cfg:get_key(uri_handlers, [])) of
         {_, Module, Methods} ->
             case Methods =:= all orelse lists:member(Method, Methods) of
                 true ->
