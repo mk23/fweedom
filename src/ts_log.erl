@@ -3,7 +3,7 @@
 -behaviour(gen_server).
 
 -export([start/0, start_link/0]).
--export([set_level/1, write_log/5]).
+-export([set_level/0, set_level/1, write_log/5]).
 
 -export([
     init/1,
@@ -36,10 +36,14 @@ start() ->
         worker,
         [?MODULE]
     },
-    supervisor:start_child(ts_sup, ChildSpec).
+    supervisor:start_child(ts_sup, ChildSpec),
+    set_level().
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+set_level() ->
+    set_level(ts_cfg:get_key(log_level)).
 
 set_level(none)          -> set_level(0);
 set_level(quiet)         -> set_level(0);
