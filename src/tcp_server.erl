@@ -37,7 +37,7 @@
 
 -include("ts.hrl").
 
--record(state, {socket, module, client = new, ready = false}).
+-record(state, {socket, module, client = new}).
 
 start_link(Socket) ->
     start_link(Socket, ?MODULE).
@@ -55,21 +55,19 @@ handle_info({tcp, Socket, Packet}, #state{module = Module} = State) ->
     ?LOG_DEBUG("received data from client: ~p: ~p", [Socket, Packet]),
     Client = Module:handle_data(Socket, Packet, State#state.client),
     ?LOG_DEBUG("new client state from handler: ~p", [Client]),
-    {noreply, State#state{client = Client}, 0};
+    inet:setopts(Socket, [{active, once}]),
+    {noreply, State#state{client = Client}};
 
 handle_info({tcp_closed, Socket}, State) ->
     ?LOG_INFO("client disconnected: ~p", [Socket]),
     {stop, normal, State};
 
-handle_info(timeout, #state{socket = Socket, ready = true} = State) ->
-    inet:setopts(Socket, [{active, once}]),
-    {noreply, State};
-
-handle_info(timeout, #state{ready = false} = State) ->
+handle_info(timeout, State) ->
     {ok, Socket} = gen_tcp:accept(State#state.socket),
     ?LOG_INFO("new client connected: ~p", [Socket]),
     tcp_sup:start_child(),
-    {noreply, State#state{socket = Socket, ready = true}, 0}.
+    inet:setopts(Socket, [{active, once}]),
+    {noreply, State#state{socket = Socket}}.
 
 handle_cast(stop, State) ->
     {stop, normal, State}.
