@@ -36,7 +36,8 @@ start(Module) ->
         supervisor,
         [?MODULE]
     },
-    supervisor:start_child(ts_sup, ChildSpec).
+    supervisor:start_child(ts_sup, ChildSpec),
+    start_child().
 
 %% @spec start_link() -> {ok, pid()}
 %% @doc Called by the root supervisor and starts the TCP supervisor process.
