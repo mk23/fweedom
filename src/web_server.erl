@@ -12,6 +12,7 @@
 
 -module(web_server).
 
+-export([start/0]).
 -export([handle_data/3]).
 -export([uri_register/2, uri_register/3]).
 
@@ -20,12 +21,34 @@
 -record(uri, {scheme = http, host, port = ts_cfg:get_key(listen_port), path}).
 -record(state, {s, method, module, uri = #uri{}, qry = [], vsn = {1, 0}, head = [], body = <<>>, left = 0}).
 
+start() ->
+    tcp_sup:start(?MODULE),
+    load_handlers(application:get_key(ts, modules)).
+
+load_handlers({ok, Mods}) ->
+    load_handlers(Mods);
+load_handlers(undefined) ->
+    ?LOG_ERROR("cannot determine current application name", []);
+load_handlers([]) ->
+    ?LOG_INFO("finished loading request uri handlers", []);
+load_handlers([H|T]) ->
+    case atom_to_list(H) of
+        [$u,$h,$_|_] ->
+            ?LOG_DEBUG("loading request uri handler: ~p", [H]),
+            H:start();
+        _ ->
+            ?LOG_DEBUG("application module is not a request uri handler: ~p", [H])
+    end,
+    load_handlers(T).
+
+
 uri_register(Path, Module) ->
+    ?LOG_INFO("something else: ~p by ~p", [Path, Module]),
     uri_register(Path, Module, all).
 
 uri_register([$/|_] = Path, Module, Methods) ->
-    ?LOG_INFO("registered uri handler: ~p by ~p for ~p", [Path, Module, Methods]),
-    ts_cfg:add_key(uri_handlers, <<Path/bytes>>, {Module, Methods});
+    ts_cfg:add_key(uri_handlers, {list_to_binary(Path), Module, Methods}),
+    ?LOG_INFO("registered uri handler: ~p by ~p for ~p", [Path, Module, Methods]);
 uri_register(Path, Module, Methods) ->
     uri_register([$/|Path], Module, Methods).
 
@@ -46,9 +69,19 @@ read_packet({ok, http_eoh, <<>>}, #state{uri = #uri{path = Path}, left = 0} = St
     handle_method(State);
 read_packet({ok, {http_request, Method, Request, Vsn}, Packet}, State) ->
     {Uri, Qry} = parse_request(Request),
-    ?LOG_DEBUG("read_packet() extracted request: ~p:~p", [Method, Request]),
-    case lists:keyfind(Uri#uri.path, 1, ts_cfg:get_key(uri_handlers, [])) of
-        {_, Module, Methods} ->
+    ?LOG_DEBUG("read_packet() extracted request: ~p: ~p", [Method, Request]),
+
+    Filter = fun({E, _, _}) ->
+        N = size(E),
+        case catch <<E:N/bytes, _/bytes>> = Uri#uri.path of
+            P when is_binary(P) ->
+                true;
+            _ ->
+                false
+        end
+    end,
+    case lists:filter(Filter, ts_cfg:get_key(uri_handlers, [])) of
+        [{_, Module, Methods}|_] ->
             case Methods =:= all orelse lists:member(Method, Methods) of
                 true ->
                     ?LOG_DEBUG("read_packet() found handler for request: ~p: ~p", [Uri#uri.path, Module]),
@@ -64,14 +97,14 @@ read_packet({ok, {http_request, Method, Request, Vsn}, Packet}, State) ->
             gen_tcp:close(State#state.s)
     end;
 read_packet({ok, {http_header, _, 'Content-Length' = Key, _, Val}, Packet}, #state{head = Head} = State) ->
-    ?LOG_DEBUG("read_packet() extracted length: ~p:~p", [Key, Val]),
+    ?LOG_DEBUG("read_packet() extracted length: ~p: ~p", [Key, Val]),
     read_packet(erlang:decode_packet(httph_bin, Packet, []), State#state{head = [{Key, Val}|Head], left = list_to_integer(binary_to_list(Val))});
 read_packet({ok, {http_header, _, <<"Expect">> = Key, _, <<"100-continue">> = Val}, Packet}, #state{head = Head} = State) ->
-    ?LOG_DEBUG("read_packet() extracted expect: ~p:~p", [Key, Val]),
+    ?LOG_DEBUG("read_packet() extracted expect: ~p: ~p", [Key, Val]),
     send_packet(State#state.s, 100),
     read_packet(erlang:decode_packet(httph_bin, Packet, []), State#state{head = [{Key, Val}|Head]});
 read_packet({ok, {http_header, _, Key, _, Val}, Packet}, #state{head = Head} = State) ->
-    ?LOG_DEBUG("read_packet() extracted header: ~p:~p", [Key, Val]),
+    ?LOG_DEBUG("read_packet() extracted header: ~p: ~p", [Key, Val]),
     read_packet(erlang:decode_packet(httph_bin, Packet, []), State#state{head = [{Key, Val}|Head]}).
 
 
