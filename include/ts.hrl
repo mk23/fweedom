@@ -9,6 +9,5 @@
     {log_file, ""},
     {log_level, error},
     {listen_port, 1123},
-    {cookie_name, "ts"},
     {reg_timeout, 3600}
 ]).
