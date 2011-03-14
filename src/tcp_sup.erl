@@ -39,7 +39,9 @@ start(Module) ->
     supervisor:start_child(ts_sup, ChildSpec),
     start_child().
 
-%% @spec start_link() -> {ok, pid()}
+%% @spec start_link(Module) -> {ok, pid()}
+%% where
+%%    Module = atom()
 %% @doc Called by the root supervisor and starts the TCP supervisor process.
 %%    Calls {@module}:init/1 in the spawned process.
 start_link(Module) ->
@@ -52,7 +54,8 @@ start_child() ->
 
 %% @spec init(Args) -> {ok, supervisor_result()}
 %% where
-%%    Args = []
+%%    Args = [Module]
+%%    Module = atom()
 %% @doc Supervisor behaviour init callback.  Spawns worker processes
 %%    to handle incoming TCP connections.
 init([Module] = _Args) ->
