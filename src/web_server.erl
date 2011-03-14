@@ -12,18 +12,25 @@
 
 -module(web_server).
 
+%% API
 -export([start/0]).
--export([handle_data/3]).
+-export([parse_qstring/1]).
+-export([send_packet/2, send_packet/3, send_packet/4]).
+
+%% web_server interface
 -export([uri_register/2, uri_register/3]).
 
--include("ts.hrl").
+%% tcp_server callback
+-export([handle_data/3]).
 
--record(uri, {scheme = http, host, port = ts_cfg:get_key(listen_port), path}).
--record(state, {s, method, module, uri = #uri{}, qry = [], vsn = {1, 0}, head = [], body = <<>>, left = 0}).
+-include("ts.hrl").
+-include("web_server.hrl").
+
 
 start() ->
     tcp_sup:start(?MODULE),
     load_handlers(application:get_key(ts, modules)).
+
 
 load_handlers({ok, Mods}) ->
     load_handlers(Mods);
@@ -43,69 +50,68 @@ load_handlers([H|T]) ->
 
 
 uri_register(Path, Module) ->
-    ?LOG_INFO("something else: ~p by ~p", [Path, Module]),
+    ?LOG_DEBUG("uri_register() found something else: ~p by ~p", [Path, Module]),
     uri_register(Path, Module, all).
-
-uri_register([$/|_] = Path, Module, Methods) ->
-    ts_cfg:add_key(uri_handlers, {list_to_binary(Path), Module, Methods}),
-    ?LOG_INFO("registered uri handler: ~p by ~p for ~p", [Path, Module, Methods]);
+uri_register([$/|Path], Module, Methods) ->
+    ?LOG_DEBUG("uri_register() stripped leading /: ~p", [Path]),
+    uri_register(Path, Module, Methods);
 uri_register(Path, Module, Methods) ->
-    uri_register([$/|Path], Module, Methods).
+    ?LOG_INFO("registering uri handler: ~p by ~p for ~p", [Path, Module, Methods]),
+    ts_cfg:add_key(uri_handlers, {Path, Module, Methods}).
 
 
 handle_data(Socket, Packet, new) ->
     ?LOG_DEBUG("handle_data() begin new web request processing", []),
-    read_packet(erlang:decode_packet(http_bin, Packet, []), #state{s = Socket});
-handle_data(_Socket, Packet, #state{uri = #uri{path = Path}, body = Body, left = Left} = State) when Left - size(Packet) =< 0 ->
+    read_packet(erlang:decode_packet(http_bin, Packet, []), #req{s = Socket});
+handle_data(_Socket, Packet, #req{uri = #uri{path = Path}, body = Body, left = Left} = Req) when Left - size(Packet) =< 0 ->
     ?LOG_DEBUG("handle_data() reached end of data transmission for request: ~p", [Path]),
-    handle_method(State#state{body = <<Body/bytes, Packet/bytes>>, left = 0});
-handle_data(_Socket, Packet, #state{uri = #uri{path = Path}, body = Body, left = Left} = State) when Left - size(Packet) > 0 ->
+    handle_method(tl(Path), Req#req{body = <<Body/bytes, Packet/bytes>>, left = 0});
+handle_data(_Socket, Packet, #req{uri = #uri{path = Path}, body = Body, left = Left} = Req) when Left - size(Packet) > 0 ->
     ?LOG_DEBUG("handle_data() received partial for request: ~p", [Path]),
-    State#state{body = <<Body/bytes, Packet/bytes>>, left = 0}.
+    Req#req{body = <<Body/bytes, Packet/bytes>>, left = Left - size(Packet)}.
 
 
-read_packet({ok, http_eoh, <<>>}, #state{uri = #uri{path = Path}, left = 0} = State) ->
+read_packet({ok, http_eoh, <<>>}, #req{uri = #uri{path = Path}, left = 0} = Req) ->
     ?LOG_DEBUG("read_packet() reached end of headers for reqest: ~p", [Path]),
-    handle_method(State);
-read_packet({ok, {http_request, Method, Request, Vsn}, Packet}, State) ->
+    handle_method(tl(Path), Req);
+read_packet({ok, http_eoh, Body}, #req{uri = #uri{path = Path}, left = Left} = Req) when size(Body) =:= Left ->
+    ?LOG_DEBUG("read_packet() reached end of headers, read full body: ~p", [Path]),
+    handle_method(tl(Path), Req#req{left = 0, body = Body});
+read_packet({ok, http_eoh, Body}, #req{uri = #uri{path = Path}, left = Left} = Req) ->
+    ?LOG_DEBUG("read_packet() reached end of headers, reading body: ~p", [Path]),
+    Req#req{body = Body, left = Left - size(Body)};
+read_packet({ok, {http_request, Method, Request, Vsn}, Packet}, Req) ->
     {Uri, Qry} = parse_request(Request),
     ?LOG_DEBUG("read_packet() extracted request: ~p: ~p", [Method, Request]),
 
-    Filter = fun({E, _, _}) ->
-        N = size(E),
-        case catch <<E:N/bytes, _/bytes>> = Uri#uri.path of
-            P when is_binary(P) ->
-                true;
-            _ ->
-                false
-        end
-    end,
-    case lists:filter(Filter, ts_cfg:get_key(uri_handlers, [])) of
+    case lists:filter(fun({E, _, _}) -> E =:= hd(Uri#uri.path) end, ts_cfg:get_key(uri_handlers, [])) of
         [{_, Module, Methods}|_] ->
             case Methods =:= all orelse lists:member(Method, Methods) of
                 true ->
                     ?LOG_DEBUG("read_packet() found handler for request: ~p: ~p", [Uri#uri.path, Module]),
-                    read_packet(erlang:decode_packet(httph_bin, Packet, []), State#state{method = Method, module = Module, uri = Uri, qry = Qry, vsn = Vsn});
+                    read_packet(erlang:decode_packet(httph_bin, Packet, []), Req#req{
+                        method = http_method(Method), module = Module, uri = Uri, qry = Qry, vsn = Vsn
+                    });
                 false ->
                     ?LOG_DEBUG("read_packet() found unimplemented method ~p for request: ~p", [Method, Uri#uri.path]),
-                    send_packet(State#state.s, 501),
-                    gen_tcp:close(State#state.s)
+                    send_packet(Req#req.s, 501),
+                    gen_tcp:close(Req#req.s)
             end;
         _ ->
             ?LOG_DEBUG("read_packet() found unimplemented request: ~p", [Uri#uri.path]),
-            send_packet(State#state.s, 501),
-            gen_tcp:close(State#state.s)
+            send_packet(Req#req.s, 501),
+            gen_tcp:close(Req#req.s)
     end;
-read_packet({ok, {http_header, _, 'Content-Length' = Key, _, Val}, Packet}, #state{head = Head} = State) ->
+read_packet({ok, {http_header, _, 'Content-Length' = Key, _, Val}, Packet}, #req{head = Head} = Req) ->
     ?LOG_DEBUG("read_packet() extracted length: ~p: ~p", [Key, Val]),
-    read_packet(erlang:decode_packet(httph_bin, Packet, []), State#state{head = [{Key, Val}|Head], left = list_to_integer(binary_to_list(Val))});
-read_packet({ok, {http_header, _, <<"Expect">> = Key, _, <<"100-continue">> = Val}, Packet}, #state{head = Head} = State) ->
+    read_packet(erlang:decode_packet(httph_bin, Packet, []), Req#req{head = [{Key, Val}|Head], left = list_to_integer(binary_to_list(Val))});
+read_packet({ok, {http_header, _, <<"Expect">> = Key, _, <<"100-continue">> = Val}, Packet}, #req{head = Head} = Req) ->
     ?LOG_DEBUG("read_packet() extracted expect: ~p: ~p", [Key, Val]),
-    send_packet(State#state.s, 100),
-    read_packet(erlang:decode_packet(httph_bin, Packet, []), State#state{head = [{Key, Val}|Head]});
-read_packet({ok, {http_header, _, Key, _, Val}, Packet}, #state{head = Head} = State) ->
+    send_packet(Req#req.s, 100),
+    read_packet(erlang:decode_packet(httph_bin, Packet, []), Req#req{head = [{Key, Val}|Head]});
+read_packet({ok, {http_header, _, Key, _, Val}, Packet}, #req{head = Head} = Req) ->
     ?LOG_DEBUG("read_packet() extracted header: ~p: ~p", [Key, Val]),
-    read_packet(erlang:decode_packet(httph_bin, Packet, []), State#state{head = [{Key, Val}|Head]}).
+    read_packet(erlang:decode_packet(httph_bin, Packet, []), Req#req{head = [{Key, Val}|Head]}).
 
 
 send_packet(Socket, Code) ->
@@ -121,6 +127,14 @@ send_packet(Socket, Code, Head, Body) ->
     ],
     ?LOG_DEBUG("sending response to client: ~p:~p", [Socket, Packet]),
     gen_tcp:send(Socket, Packet).
+
+
+http_method('GET')    -> handle_get;
+http_method('HEAD')   -> handle_head;
+http_method('PUT')    -> handle_put;
+http_method('POST')   -> handle_post;
+http_method('DELETE') -> handle_delete;
+http_method(_)        -> handle_other.
 
 
 http_response(100) -> "100 Continue";
@@ -146,7 +160,7 @@ parse_request({absoluteURI, Scheme, Host, Port, Path}) ->
 %    parse_request(#uri{scheme = Scheme, host = Host, port = Port, path = Path});
 parse_request(#uri{path = Path} = Uri) ->
     {match, [P, Q]} = re:run(Path, "(?<URI>[^?]+)(?:\\?(?<QRY>.+))?", [{capture, [1, 2], binary}]),
-    {Uri#uri{path = P}, parse_qstring(Q)}.
+    {Uri#uri{path = parse_uripath(P)}, parse_qstring(Q)}.
 
 
 hex_to_int(C) when C >= $0 andalso C =< $9 ->
@@ -155,6 +169,24 @@ hex_to_int(C) when C >= $A andalso C =< $F ->
     C - $A + 10;
 hex_to_int(C) when C >= $a andalso C =< $f ->
     C - $a + 10.
+
+
+parse_uripath(P) ->
+    parse_uripath(P, "", []).
+
+parse_uripath(<<>>, "", Acc) ->
+    lists:reverse(Acc);
+parse_uripath(<<>>, Str, Acc) ->
+    lists:reverse([lists:reverse(Str)|Acc]);
+parse_uripath(<<$/, P/bytes>>, "", []) ->
+    parse_uripath(P, "", []);
+parse_uripath(<<$/, P/bytes>>, Str, Acc) ->
+    parse_uripath(P, "", [lists:reverse(Str)|Acc]);
+parse_uripath(<<$%, C1:8, C2:8, P/bytes>>, Str, Acc) ->
+    C = hex_to_int(C1) bsl 4 + hex_to_int(C2),
+    parse_uripath(P, [C|Str], Acc);
+parse_uripath(<<C:8, P/bytes>>, Str, Acc) ->
+    parse_uripath(P, [C|Str], Acc).
 
 
 parse_qstring(Q) ->
@@ -178,8 +210,14 @@ parse_qstring(<<$&, Q/bytes>>, Str, Acc) ->
 parse_qstring(<<C:8, Q/bytes>>, Str, Acc) ->
     parse_qstring(Q, <<Str/bytes, C:8>>, Acc).
 
-handle_method(#state{method = 'GET', module = Module} = State) ->
-    Module:handle_get(State);
-handle_method(#state{method = 'POST', module = Module} = State) ->
-    Module:handle_post(State).
-%% TODO: implement the rest of the handlers
+
+handle_method(Uri, #req{s = S, method = Method, module = Module} = Req) ->
+    case Module:Method(Uri, Req) of
+        {Code, Head, Body} ->
+            send_packet(S, Code, Head, Body);
+        {Code, Body} ->
+            send_packet(S, Code, Body);
+        Other ->
+            send_packet(S, 500, list_to_binary(io_lib:format("~p", [Other])))
+    end,
+    ?END_REQUEST(S).
