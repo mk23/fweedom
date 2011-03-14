@@ -22,6 +22,7 @@
 %% @doc Starts the main application.
 start() ->
     application:start(sasl),
+    application:start(mnesia),
     application:start(ts, permanent).
 
 %% @spec stop() -> ok
