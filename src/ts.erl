@@ -21,8 +21,17 @@
 %% @spec start() -> ok
 %% @doc Starts the main application.
 start() ->
-    application:start(sasl),
-    application:start(mnesia),
+    case mnesia:system_info(extra_db_nodes) of
+        [] ->
+            mnesia:create_schema([node()]);
+        _ ->
+            ok
+    end,
+
+    application:start(sasl, permanent),
+    application:start(mnesia, permanent),
+    mnesia:wait_for_tables(mnesia:system_info(local_tables), infinity),
+
     application:start(ts, permanent).
 
 %% @spec stop() -> ok
