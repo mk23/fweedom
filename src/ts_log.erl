@@ -125,7 +125,7 @@ init([]) ->
 handle_cast({write_log, File, Line, Prefix, Format, Params}, State) ->
     {_, _, Ms} = Now = erlang:now(),
     {{Yr, Mo, Dy},{Hr, Mi, Se}} = calendar:now_to_local_time(Now),
-    io:fwrite(State#state.fd, "[~B-~2..0B-~2..0B ~2..0B:~2..0B:~2..0B.~3..0B] ~s ~s(~B) - " ++ Format,
+    io:fwrite(State#state.fd, "[~B-~2..0B-~2..0B ~2..0B:~2..0B:~2..0B.~3..0B] ~s ~s:~B - " ++ Format,
         [Yr, Mo, Dy, Hr, Mi, Se, Ms div 1000, Prefix, File, Line] ++ Params
     ),
     {noreply, State}.
