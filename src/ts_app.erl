@@ -29,6 +29,8 @@ start(normal = _Type, _Args) ->
     {ok, Pid} = ts_sup:start_link(),
     ts_cfg:start(),
     ts_log:start(),
+
+    db_util:upgrade_table(table_vsn),
     web_server:start(),
     {ok, Pid}.
 

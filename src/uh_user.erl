@@ -28,7 +28,9 @@
 -include("ts.hrl").
 -include("web_server.hrl").
 
+
 start() ->
+    db_util:upgrade_table(user_data),
     web_server:uri_register("user", ?MODULE, ['GET', 'POST']),
     ChildSpec = {?MODULE,
         {?MODULE, start_link, []},
