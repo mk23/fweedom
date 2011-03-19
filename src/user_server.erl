@@ -3,7 +3,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/2]).
+-export([start_link/3]).
 
 %% gen_server callbacks
 -export([
@@ -17,25 +17,33 @@
 
 -include("ts.hrl").
 
--record(state, {login, data}).
+-record(state, {login, type, data}).
 
-start_link(Login, Data) ->
-    ?LOG_INFO("starting user registration session: ~p", [Login]),
+start_link(Type, Login, Data) ->
+    ?LOG_INFO("starting user request (~p) session: ~p", [Type, Login]),
     gen_server:start_link(?MODULE, [Login, Data], []).
 
-init([Login, Data]) ->
-    ?LOG_DEBUG("created registration grace period: ~p: ~p", [Login, Data]),
-    {ok, #state{login = Login, data = Data}, ts_cfg:get_key(reg_timeout) * 1000}.
+init([Type, Login, Data]) ->
+    ?LOG_DEBUG("created request (~p) grace period: ~p: ~p", [Type, Login, Data]),
+    {ok, #state{login = Login, type = Type, data = Data}, ts_cfg:get_key(reg_timeout) * 1000}.
 
 handle_info(timeout, State) ->
-    ?LOG_INFO("registration grace period expired: ~p", [State#state.login]),
+    ?LOG_INFO("user request (~p) grace period expired: ~p", [State#state.type, State#state.login]),
     {stop, normal, State}.
 
 handle_cast(_Req, State) ->
     {noreply, State}.
 
-handle_call(_Req, _From, State) ->
-    {reply, ok, State}.
+handle_call({verify, Login}, _From, #state{type = create, login = Login} = State) ->
+    {reply, ok, State};
+
+handle_call({verify, Login}, _From, #state{type = change, login = Login} = State) ->
+    {reply, ok, State};
+
+handle_call({verify, Login}, _From, State) ->
+    ?LOG_ERROR("invalid confirmation request (~p) for ~p: expected ~p", [Login, State#state.type, State#state.login]),
+    {reply, false, State}.
+
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.

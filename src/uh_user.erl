@@ -54,22 +54,64 @@ init([] = _Args) ->
               temporary, brutal_kill, worker, [user_server]},
     {ok, {{simple_one_for_one, 0, 1}, [Server]}}.
 
-handle_get(["aprove", Token], Req) ->
-    ?LOG_DEBUG("handling user confirmation request: ~p", [Req]),
+
+%% @spec handle_get(Path, Req) -> Code | {Code, Body} | {Code, Head, Body}
+%% where
+%%    Path = [string()]
+%%    Req = req()
+%%    Code = integer()
+%%    Head = [Header]
+%%    Body = binary
+%%    Header = {Key, Val}
+%%    Key = string()
+%%    Val = string()
+%% @doc web_server callback for the HTTP GET method.
+handle_get(["verify", Token], Req) ->
+    ?LOG_DEBUG("handling user confirmation request: ~9999p", [Req]),
     {Login, Pid} = binary_to_term(base64:decode(Token)),
     case rpc:pinfo(Pid, status) of
         {status, _} ->
             ?LOG_DEBUG("found existing registration process: ~p for ~p", [Pid, Login]),
-%            gen_server:cast(Pid, {confirm, Login}).
+            gen_server:call(Pid, {confirm, Login}),
             {201, <<"created\n">>};
         _ ->
             ?LOG_INFO("no registration process found for pid: ~p", [Pid]),
             {404, <<"invalid token\n">>}
     end.
 
+
+%% @spec handle_post(Path, Req) -> Code | {Code, Body} | {Code, Head, Body}
+%% where
+%%    Path = [string()]
+%%    Req = req()
+%%    Code = integer()
+%%    Head = [Header]
+%%    Body = binary
+%%    Header = {Key, Val}
+%%    Key = string()
+%%    Val = string()
+%% @doc web_server callback for the HTTP POST method.
 handle_post(["create", Login], Req) ->
-    ?LOG_DEBUG("handling user registration request: ~p", [Req]),
-    {ok, Pid} = supervisor:start_child(?MODULE, [Login, web_server:parse_qstring(Req#req.body)]),
-    Token = base64:encode(term_to_binary({Login, Pid})),
-    {200, <<"Registration started: ", Token/bytes, $\n>>}.
+    ?LOG_DEBUG("handling user registration request: ~9999p", [Req]),
+    Pairs = web_server:parse_qstring(Req#req.body),
+    case user_data:verify_user(Login) of
+        not_found ->
+            {ok, Pid} = supervisor:start_child(?MODULE, [create, Login, Pairs]),
+            Token = base64:encode(term_to_binary({Login, Pid})),
+            {200, <<"Registration started: ", Token/bytes, $\n>>};
+        {ok, Login} ->
+            {409, <<"requested login already exists\n">>}
+    end;
+
+handle_post(["change", Login], Req) ->
+    ?LOG_DEBUG("handling user change password request: ~9999p", [Req]),
+    Pairs = web_server:parse_qstring(Req#req.body),
+    case user_data:verify_pass(Login, lists:keyfind(1, "old", Pairs)) of
+        {ok, valid} ->
+            {ok, Pid} = supervisor:start_child(?MODULE, [change, Login, Pairs]),
+            Token = base64:encode(term_to_binary({Login, Pid})),
+            {200, <<"Change password started: ", Token/bytes, $\n>>};
+        _ ->
+            {403, <<"invalid password">>}
+    end.
 
