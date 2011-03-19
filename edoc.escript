@@ -7,7 +7,7 @@ main([Version]) ->
         {new, true},
         {todo, true},
         {private, true},
-        {preprocess, false},
+        {preprocess, true},
         {includes, ["include"]},
         {def, [{version, Version}]}
     ]);
