@@ -212,7 +212,7 @@ parse_qstring(<<C:8, Q/bytes>>, Str, Acc) ->
 
 
 handle_method(Uri, #req{s = S, method = Method, module = Module} = Req) ->
-    case Module:Method(Uri, Req) of
+    case catch Module:Method(Uri, Req) of
         {Code, Head, Body} ->
             send_packet(S, Code, Head, Body);
         {Code, Body} ->
