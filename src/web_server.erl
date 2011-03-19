@@ -143,6 +143,7 @@ http_response(201) -> "201 Created";
 http_response(401) -> "401 Forbidden";
 http_response(403) -> "403 Unauthorized";
 http_response(404) -> "404 Not Found";
+http_response(409) -> "409 Conflict";
 http_response(500) -> "500 Internal Server Error";
 http_response(501) -> "501 Not Implemented";
 http_response(503) -> "503 Unavailable";
