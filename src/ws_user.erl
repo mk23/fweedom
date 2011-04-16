@@ -30,8 +30,8 @@
 
 
 start() ->
-    db:update_table(user_data),
-    ws:uri_register("user", ?MODULE, ['GET', 'POST']),
+    db_mgr:update_table(user_data),
+    web_srv:uri_register("user", ?MODULE, ['GET', 'POST']),
     ChildSpec = {?MODULE,
         {?MODULE, start_link, []},
         permanent,
@@ -65,7 +65,7 @@ init([] = _Args) ->
 %%    Header = {Key, Val}
 %%    Key = string()
 %%    Val = string()
-%% @doc ws callback for the HTTP GET method.
+%% @doc web_svr callback for the HTTP GET method.
 handle_get(["verify", Token], Req) ->
     ?LOG_DEBUG("handling user confirmation request: ~9999p", [Req]),
     {Login, Pid} = binary_to_term(base64:decode(Token)),
@@ -90,10 +90,10 @@ handle_get(["verify", Token], Req) ->
 %%    Header = {Key, Val}
 %%    Key = string()
 %%    Val = string()
-%% @doc ws callback for the HTTP POST method.
+%% @doc web_svr callback for the HTTP POST method.
 handle_post(["create", Login], Req) ->
     ?LOG_DEBUG("handling user registration request: ~9999p", [Req]),
-    Pairs = ws:parse_qstring(Req#req.body),
+    Pairs = web_svr:parse_qstring(Req#req.body),
     case user_data:verify_user(Login) of
         not_found ->
             {ok, Pid} = supervisor:start_child(?MODULE, [create, Login, Pairs]),
@@ -105,7 +105,7 @@ handle_post(["create", Login], Req) ->
 
 handle_post(["change", Login], Req) ->
     ?LOG_DEBUG("handling user change password request: ~9999p", [Req]),
-    Pairs = ws:parse_qstring(Req#req.body),
+    Pairs = web_svr:parse_qstring(Req#req.body),
     case user_data:verify_pass(Login, lists:keyfind(1, "old", Pairs)) of
         {ok, valid} ->
             {ok, Pid} = supervisor:start_child(?MODULE, [change, Login, Pairs]),

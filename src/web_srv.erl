@@ -10,14 +10,14 @@
 %%   This module provides functions to handle a subset of HTTP/1.1 requests and dispatches
 %%   them to registered uri handlers implemented by other modules.
 
--module(ws).
+-module(web_srv).
 
 %% API
 -export([start/0]).
 -export([parse_qstring/1]).
 -export([send_packet/2, send_packet/3, send_packet/4]).
 
-%% ws interface
+%% web_srv interface
 -export([uri_register/2, uri_register/3]).
 
 %% tcp_srv callback
@@ -50,13 +50,13 @@ start() ->
 
 
 uri_register(Path, Module) ->
-    ?LOG_DEBUG("uri_register() found something else: ~p by ~p", [Path, Module]),
+    ?LOG_DEBUG("uri_register() found something else: ~9999p by ~p", [Path, Module]),
     uri_register(Path, Module, all).
 uri_register([$/|Path], Module, Methods) ->
-    ?LOG_DEBUG("uri_register() stripped leading /: ~p", [Path]),
+    ?LOG_DEBUG("uri_register() stripped leading /: ~9999p", [Path]),
     uri_register(Path, Module, Methods);
 uri_register(Path, Module, Methods) ->
-    ?LOG_INFO("registering uri handler: ~p by ~p for ~p", [Path, Module, Methods]),
+    ?LOG_INFO("registering uri handler: ~9999p by ~p for ~9999p", [Path, Module, Methods]),
     fw_cfg:add_key(uri_handlers, {Path, Module, Methods}).
 
 
@@ -64,53 +64,53 @@ handle_data(Socket, Packet, new) ->
     ?LOG_DEBUG("handle_data() begin new web request processing", []),
     read_packet(erlang:decode_packet(http_bin, Packet, []), #req{s = Socket});
 handle_data(_Socket, Packet, #req{uri = #uri{path = Path}, body = Body, left = Left} = Req) when Left - size(Packet) =< 0 ->
-    ?LOG_DEBUG("handle_data() reached end of data transmission for request: ~p", [Path]),
+    ?LOG_DEBUG("handle_data() reached end of data transmission for request: ~9999p", [Path]),
     handle_method(tl(Path), Req#req{body = <<Body/bytes, Packet/bytes>>, left = 0});
 handle_data(_Socket, Packet, #req{uri = #uri{path = Path}, body = Body, left = Left} = Req) when Left - size(Packet) > 0 ->
-    ?LOG_DEBUG("handle_data() received partial for request: ~p", [Path]),
+    ?LOG_DEBUG("handle_data() received partial for request: ~9999p", [Path]),
     Req#req{body = <<Body/bytes, Packet/bytes>>, left = Left - size(Packet)}.
 
 
 read_packet({ok, http_eoh, <<>>}, #req{uri = #uri{path = Path}, left = 0} = Req) ->
-    ?LOG_DEBUG("read_packet() reached end of headers for reqest: ~p", [Path]),
+    ?LOG_DEBUG("read_packet() reached end of headers for reqest: ~9999p", [Path]),
     handle_method(tl(Path), Req);
 read_packet({ok, http_eoh, Body}, #req{uri = #uri{path = Path}, left = Left} = Req) when size(Body) =:= Left ->
-    ?LOG_DEBUG("read_packet() reached end of headers, read full body: ~p", [Path]),
+    ?LOG_DEBUG("read_packet() reached end of headers, read full body: ~9999p", [Path]),
     handle_method(tl(Path), Req#req{left = 0, body = Body});
 read_packet({ok, http_eoh, Body}, #req{uri = #uri{path = Path}, left = Left} = Req) ->
-    ?LOG_DEBUG("read_packet() reached end of headers, reading body: ~p", [Path]),
+    ?LOG_DEBUG("read_packet() reached end of headers, reading body: ~9999p", [Path]),
     Req#req{body = Body, left = Left - size(Body)};
 read_packet({ok, {http_request, Method, Request, Vsn}, Packet}, Req) ->
     {Uri, Qry} = parse_request(Request),
-    ?LOG_DEBUG("read_packet() extracted request: ~p: ~p", [Method, Request]),
+    ?LOG_DEBUG("read_packet() extracted request: ~9999p: ~9999p", [Method, Request]),
 
     case lists:filter(fun({E, _, _}) -> E =:= hd(Uri#uri.path) end, fw_cfg:get_key(uri_handlers, [])) of
         [{_, Module, Methods}|_] ->
             case Methods =:= all orelse lists:member(Method, Methods) of
                 true ->
-                    ?LOG_DEBUG("read_packet() found handler for request: ~p: ~p", [Uri#uri.path, Module]),
+                    ?LOG_DEBUG("read_packet() found handler for request: ~9999p: ~p", [Uri#uri.path, Module]),
                     read_packet(erlang:decode_packet(httph_bin, Packet, []), Req#req{
                         method = http_method(Method), module = Module, uri = Uri, qry = Qry, vsn = Vsn
                     });
                 false ->
-                    ?LOG_DEBUG("read_packet() found unimplemented method ~p for request: ~p", [Method, Uri#uri.path]),
+                    ?LOG_DEBUG("read_packet() found unimplemented method ~p for request: ~9999p", [Method, Uri#uri.path]),
                     send_packet(Req#req.s, 501),
                     gen_tcp:close(Req#req.s)
             end;
         _ ->
-            ?LOG_DEBUG("read_packet() found unimplemented request: ~p", [Uri#uri.path]),
+            ?LOG_DEBUG("read_packet() found unimplemented request: ~9999p", [Uri#uri.path]),
             send_packet(Req#req.s, 501),
             gen_tcp:close(Req#req.s)
     end;
 read_packet({ok, {http_header, _, 'Content-Length' = Key, _, Val}, Packet}, #req{head = Head} = Req) ->
-    ?LOG_DEBUG("read_packet() extracted length: ~p: ~p", [Key, Val]),
+    ?LOG_DEBUG("read_packet() extracted length: ~9999p: ~9999p", [Key, Val]),
     read_packet(erlang:decode_packet(httph_bin, Packet, []), Req#req{head = [{Key, Val}|Head], left = list_to_integer(binary_to_list(Val))});
 read_packet({ok, {http_header, _, <<"Expect">> = Key, _, <<"100-continue">> = Val}, Packet}, #req{head = Head} = Req) ->
-    ?LOG_DEBUG("read_packet() extracted expect: ~p: ~p", [Key, Val]),
+    ?LOG_DEBUG("read_packet() extracted expect: ~9999p: ~9999p", [Key, Val]),
     send_packet(Req#req.s, 100),
     read_packet(erlang:decode_packet(httph_bin, Packet, []), Req#req{head = [{Key, Val}|Head]});
 read_packet({ok, {http_header, _, Key, _, Val}, Packet}, #req{head = Head} = Req) ->
-    ?LOG_DEBUG("read_packet() extracted header: ~p: ~p", [Key, Val]),
+    ?LOG_DEBUG("read_packet() extracted header: ~9999p: ~9999p", [Key, Val]),
     read_packet(erlang:decode_packet(httph_bin, Packet, []), Req#req{head = [{Key, Val}|Head]}).
 
 
@@ -125,7 +125,7 @@ send_packet(Socket, Code, Head, Body) ->
         [ [Key, ": ", Val, "\r\n"] || {Key, Val} <- [{"Content-length", integer_to_list(byte_size(Binary))}|Head] ],
         "\r\n", Binary
     ],
-    ?LOG_DEBUG("sending response to client: ~p:~p", [Socket, Packet]),
+    ?LOG_DEBUG("sending response to client: ~9999p\n\t~9999p", [Socket, Packet]),
     gen_tcp:send(Socket, Packet).
 
 

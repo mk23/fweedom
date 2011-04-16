@@ -1,4 +1,6 @@
--module(db).
+%%TODO: split this into framework and other app
+
+-module(db_mgr).
 
 -export([update_table/1]).
 
