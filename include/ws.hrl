@@ -1,5 +1,3 @@
--define(END_REQUEST(S), {stop, normal, ok}).
-
 %% @type uri() = { scheme = http | https | ftp | binary()
 %%                 host = string()
 %%                 port = int() | undefined

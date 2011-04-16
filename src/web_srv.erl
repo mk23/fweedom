@@ -95,12 +95,12 @@ read_packet({ok, {http_request, Method, Request, Vsn}, Packet}, Req) ->
                 false ->
                     ?LOG_DEBUG("read_packet() found unimplemented method ~p for request: ~9999p", [Method, Uri#uri.path]),
                     send_packet(Req#req.s, 501),
-                    gen_tcp:close(Req#req.s)
+                    {stop, normal, ok}
             end;
         _ ->
             ?LOG_DEBUG("read_packet() found unimplemented request: ~9999p", [Uri#uri.path]),
             send_packet(Req#req.s, 501),
-            gen_tcp:close(Req#req.s)
+            {stop, normal, ok}
     end;
 read_packet({ok, {http_header, _, 'Content-Length' = Key, _, Val}, Packet}, #req{head = Head} = Req) ->
     ?LOG_DEBUG("read_packet() extracted length: ~9999p: ~9999p", [Key, Val]),
@@ -125,7 +125,7 @@ send_packet(Socket, Code, Head, Body) ->
         [ [Key, ": ", Val, "\r\n"] || {Key, Val} <- [{"Content-length", integer_to_list(byte_size(Binary))}|Head] ],
         "\r\n", Binary
     ],
-    ?LOG_DEBUG("sending response to client: ~9999p\n\t~9999p", [Socket, Packet]),
+    ?LOG_DEBUG("sending response to client: ~p: ~9999p", [Socket, Packet]),
     gen_tcp:send(Socket, Packet).
 
 
@@ -221,4 +221,4 @@ handle_method(Uri, #req{s = S, method = Method, module = Module} = Req) ->
         Other ->
             send_packet(S, 500, list_to_binary(io_lib:format("~p", [Other])))
     end,
-    ?END_REQUEST(S).
+    {stop, normal, ok}.
