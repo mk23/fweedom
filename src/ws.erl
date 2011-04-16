@@ -1,4 +1,4 @@
-%% @author Max Kalika <max.kalika+telenphone@gmail.com>
+%% @author Max Kalika <max.kalika+framework@gmail.com>
 %% @copyright 2011
 %% @version {@version}
 %% @since 1.0.0
@@ -6,47 +6,47 @@
 %%   <a href="http://www.erlang.org/doc/man/gen_tcp.html" target="_blank">Erlang TCP</a>
 %%   documentation for more information.
 %%
-%% @doc telephone-server - HTTP requests handler
+%% @doc Application Framework - HTTP requests handler
 %%   This module provides functions to handle a subset of HTTP/1.1 requests and dispatches
 %%   them to registered uri handlers implemented by other modules.
 
--module(web_server).
+-module(ws).
 
 %% API
 -export([start/0]).
 -export([parse_qstring/1]).
 -export([send_packet/2, send_packet/3, send_packet/4]).
 
-%% web_server interface
+%% ws interface
 -export([uri_register/2, uri_register/3]).
 
-%% tcp_server callback
+%% tcp_srv callback
 -export([handle_data/3]).
 
--include("ts.hrl").
--include("web_server.hrl").
+-include("fw.hrl").
+-include("ws.hrl").
 
 
 start() ->
-    tcp_sup:start(?MODULE),
-    load_handlers(application:get_key(ts, modules)).
-
-
-load_handlers({ok, Mods}) ->
-    load_handlers(Mods);
-load_handlers(undefined) ->
-    ?LOG_ERROR("cannot determine current application name", []);
-load_handlers([]) ->
-    ?LOG_INFO("finished loading request uri handlers", []);
-load_handlers([H|T]) ->
-    case atom_to_list(H) of
-        [$u,$h,$_|_] ->
-            ?LOG_DEBUG("loading request uri handler: ~p", [H]),
-            H:start();
-        _ ->
-            ?LOG_DEBUG("application module is not a request uri handler: ~p", [H])
-    end,
-    load_handlers(T).
+    tcp_sup:start(?MODULE).
+%    load_handlers(application:get_key(ts, modules)).
+%
+%
+%load_handlers({ok, Mods}) ->
+%    load_handlers(Mods);
+%load_handlers(undefined) ->
+%    ?LOG_ERROR("cannot determine current application name", []);
+%load_handlers([]) ->
+%    ?LOG_INFO("finished loading request uri handlers", []);
+%load_handlers([H|T]) ->
+%    case atom_to_list(H) of
+%        [$u,$h,$_|_] ->
+%            ?LOG_DEBUG("loading request uri handler: ~p", [H]),
+%            H:start();
+%        _ ->
+%            ?LOG_DEBUG("application module is not a request uri handler: ~p", [H])
+%    end,
+%    load_handlers(T).
 
 
 uri_register(Path, Module) ->
@@ -57,7 +57,7 @@ uri_register([$/|Path], Module, Methods) ->
     uri_register(Path, Module, Methods);
 uri_register(Path, Module, Methods) ->
     ?LOG_INFO("registering uri handler: ~p by ~p for ~p", [Path, Module, Methods]),
-    ts_cfg:add_key(uri_handlers, {Path, Module, Methods}).
+    fw_cfg:add_key(uri_handlers, {Path, Module, Methods}).
 
 
 handle_data(Socket, Packet, new) ->
@@ -84,7 +84,7 @@ read_packet({ok, {http_request, Method, Request, Vsn}, Packet}, Req) ->
     {Uri, Qry} = parse_request(Request),
     ?LOG_DEBUG("read_packet() extracted request: ~p: ~p", [Method, Request]),
 
-    case lists:filter(fun({E, _, _}) -> E =:= hd(Uri#uri.path) end, ts_cfg:get_key(uri_handlers, [])) of
+    case lists:filter(fun({E, _, _}) -> E =:= hd(Uri#uri.path) end, fw_cfg:get_key(uri_handlers, [])) of
         [{_, Module, Methods}|_] ->
             case Methods =:= all orelse lists:member(Method, Methods) of
                 true ->

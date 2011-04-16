@@ -14,7 +14,7 @@
 %%    <a href="http://www.erlang.org/doc/man/supervisor.html#Module:init-1" target="_blank">documentation</a>
 %%    for more information.
 
--module(uh_user).
+-module(ws_user).
 
 %% API
 -export([start/0, start_link/0]).
@@ -25,13 +25,13 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--include("ts.hrl").
--include("web_server.hrl").
+-include("fw.hrl").
+-include("ws.hrl").
 
 
 start() ->
-    db_util:upgrade_table(user_data),
-    web_server:uri_register("user", ?MODULE, ['GET', 'POST']),
+    db:update_table(user_data),
+    ws:uri_register("user", ?MODULE, ['GET', 'POST']),
     ChildSpec = {?MODULE,
         {?MODULE, start_link, []},
         permanent,
@@ -39,7 +39,7 @@ start() ->
         supervisor,
         [?MODULE]
     },
-    supervisor:start_child(ts_sup, ChildSpec).
+    supervisor:start_child(fw_sup, ChildSpec).
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
@@ -65,7 +65,7 @@ init([] = _Args) ->
 %%    Header = {Key, Val}
 %%    Key = string()
 %%    Val = string()
-%% @doc web_server callback for the HTTP GET method.
+%% @doc ws callback for the HTTP GET method.
 handle_get(["verify", Token], Req) ->
     ?LOG_DEBUG("handling user confirmation request: ~9999p", [Req]),
     {Login, Pid} = binary_to_term(base64:decode(Token)),
@@ -90,10 +90,10 @@ handle_get(["verify", Token], Req) ->
 %%    Header = {Key, Val}
 %%    Key = string()
 %%    Val = string()
-%% @doc web_server callback for the HTTP POST method.
+%% @doc ws callback for the HTTP POST method.
 handle_post(["create", Login], Req) ->
     ?LOG_DEBUG("handling user registration request: ~9999p", [Req]),
-    Pairs = web_server:parse_qstring(Req#req.body),
+    Pairs = ws:parse_qstring(Req#req.body),
     case user_data:verify_user(Login) of
         not_found ->
             {ok, Pid} = supervisor:start_child(?MODULE, [create, Login, Pairs]),
@@ -105,13 +105,13 @@ handle_post(["create", Login], Req) ->
 
 handle_post(["change", Login], Req) ->
     ?LOG_DEBUG("handling user change password request: ~9999p", [Req]),
-    Pairs = web_server:parse_qstring(Req#req.body),
+    Pairs = ws:parse_qstring(Req#req.body),
     case user_data:verify_pass(Login, lists:keyfind(1, "old", Pairs)) of
         {ok, valid} ->
             {ok, Pid} = supervisor:start_child(?MODULE, [change, Login, Pairs]),
             Token = base64:encode(term_to_binary({Login, Pid})),
             {200, <<"Change password started: ", Token/bytes, $\n>>};
         _ ->
-            {403, <<"invalid password">>}
+            {403, <<"invalid password\n">>}
     end.
 

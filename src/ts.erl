@@ -9,14 +9,10 @@
 %%   <code>erl -noshell -noinput -sname &lt;nodename&gt; -s ts</code>
 %% @end
 
-%% TODO: Get a real logger with real log levels and real checking of log levels
-
 -module(ts).
 -include_lib("eunit/include/eunit.hrl").
 
 -export([start/0, stop/0]).
-
--include("ts.hrl").
 
 %% @spec start() -> ok
 %% @doc Starts the main application.
@@ -32,9 +28,9 @@ start() ->
     application:start(mnesia, permanent),
     mnesia:wait_for_tables(mnesia:system_info(local_tables), infinity),
 
-    application:start(ts, permanent).
+    application:start(fw, permanent).
 
 %% @spec stop() -> ok
 %% @doc Stops the main application.
 stop() ->
-    application:stop(ts).
+    application:stop(fw).

@@ -6,7 +6,7 @@ space := $(empty) $(empty)
 EBIN_DIR = ebin
 EDOC_DIR = docs
 EMK_FILE = Emakefile
-APP_FILE = $(EBIN_DIR)/ts.app
+APP_FILE = $(EBIN_DIR)/fw.app
 VSN_FILE = include/version.hrl
 MOD_LIST = $(patsubst src/%.erl,%,$(wildcard src/*.erl))
 
@@ -43,7 +43,7 @@ $(EMK_FILE):	Emakefile.in
 		-e "s:@TEST_OPT@:$(TEST_OPT):" \
 		$< > $@
 
-$(APP_FILE):	ts.app.in $(EBIN_DIR)
+$(APP_FILE):	fw.app.in $(EBIN_DIR)
 	sed \
 		-e 's:@MOD_LIST@:$(subst $(space),$(comma),$(MOD_LIST)):' \
 		-e 's:@APP_VSN@:$(APP_VSN):' \

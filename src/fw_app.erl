@@ -1,4 +1,4 @@
-%% @author Max Kalika <max.kalika+telephone@gmail.com>
+%% @author Max Kalika <max.kalika+framework@gmail.com>
 %% @copyright 2011
 %% @version {@version}
 %% @since 1.0.0
@@ -6,32 +6,32 @@
 %%   <a href="http://erlang.org/doc/design_principles/applications.html" target="_blank">OTP applications</a>
 %%   documentation for more information.
 %%
-%% @doc telephone-server - Top-level application controller
-%%   This module provides the necessary callbacks to start the telephone server
-%%   application. It uses the ts.app resource file to determine the function and
+%% @doc framework - Top-level application controller.
+%%   This module provides the necessary callbacks to start the framework server
+%%   application. It uses the fw.app resource file to determine the function and
 %%   arguments.
 
--module(ts_app).
+-module(fw_app).
 
 -behaviour(application).
 
 %% API
 -export([start/2, stop/1]).
 
--include("ts.hrl").
+-include("fw.hrl").
 
 %% @spec start(Type, Args) -> {ok, pid()}
 %% where
 %%    Type = normal
 %%    Args = term()
-%% @doc Application behaviour start callback.  Starts the top-level supervisor.
+%% @doc Application behaviour start callback.  Starts the root supervisor.
 start(normal = _Type, _Args) ->
-    {ok, Pid} = ts_sup:start_link(),
-    ts_cfg:start(),
-    ts_log:start(),
+    {ok, Pid} = fw_sup:start_link(),
+    fw_cfg:start(),
+    fw_log:start(),
 
-    db_util:upgrade_table(table_vsn),
-    web_server:start(),
+    db:update_table(table_vsn),
+    ws:start(),
     {ok, Pid}.
 
 %% @spec stop(State) -> ok

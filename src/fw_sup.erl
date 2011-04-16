@@ -1,4 +1,4 @@
-%% @author Max Kalika <max.kalika+telephone@gmail.com>
+%% @author Max Kalika <max.kalika+framework@gmail.com>
 %% @copyright 2011
 %% @version {@version}
 %% @since 1.0.0
@@ -6,14 +6,14 @@
 %%   <a href="http://www.erlang.org/doc/man/supervisor.html" target="_blank">OTP supervisor</a>
 %%   documentation for more information.
 %%
-%% @doc telephone-server - Top-level supervisor controller.
+%% @doc Application Framework - Top-level supervisor controller.
 %%   This module provides all necessary callbacks to create the root of the supervisor tree.
 %%
 %% @type supervisor_result() = term().  Please see OTP
 %%    <a href="http://www.erlang.org/doc/man/supervisor.html#Module:init-1" target="_blank">documentation</a>
 %%    for more information.
 
--module(ts_sup).
+-module(fw_sup).
 
 -behaviour(supervisor).
 
@@ -23,7 +23,7 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--include("ts.hrl").
+-include("fw.hrl").
 
 %% @spec start_link() -> {ok, pid()}
 %% @doc Called by the application start.  Creates the top-level supervisor

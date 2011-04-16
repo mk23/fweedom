@@ -1,10 +1,10 @@
-{application, ts,
+{application, fw,
  [
-  {description, "Telephone Server"},
+  {description, "Application Framework"},
   {vsn, "@APP_VSN@"},
   {modules, [@MOD_LIST@]},
   {applications, [kernel, stdlib, sasl, mnesia]},
-  {registered, [ts_sup]},
-  {mod, {ts_app, []}}
+  {registered, [fw_sup]},
+  {mod, {fw_app, []}}
  ]
 }.

@@ -5,7 +5,7 @@
 %%                 port = int() | undefined
 %%                 path = [string()]
 %%               }
--record(uri, {scheme = http, host, port = ts_cfg:get_key(listen_port), path}).
+-record(uri, {scheme = http, host, port = fw_cfg:get_key(listen_port), path}).
 
 %% @type req() = { s = Socket
 %%                 method = 'GET' | 'POST' | 'PUT' | 'DELETE'

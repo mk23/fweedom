@@ -1,4 +1,4 @@
--module(ts_log).
+-module(fw_log).
 
 -behaviour(gen_server).
 
@@ -14,7 +14,7 @@
     terminate/2
 ]).
 
--include("ts.hrl").
+-include("fw.hrl").
 
 -record(log_level, {index, label, prefix, method}).
 -define(LOG_LEVELS, [
@@ -36,14 +36,14 @@ start() ->
         worker,
         [?MODULE]
     },
-    supervisor:start_child(ts_sup, ChildSpec),
+    supervisor:start_child(fw_sup, ChildSpec),
     set_level().
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 set_level() ->
-    set_level(ts_cfg:get_key(log_level)).
+    set_level(fw_cfg:get_key(log_level)).
 
 set_level(none)          -> set_level(0);
 set_level(quiet)         -> set_level(0);
@@ -65,7 +65,7 @@ set_level(Limit) ->
         (MinLevel, LogLevel) when MinLevel >= LogLevel#log_level.index ->
             io_lib:format("
                 ~p(File, Line, Format, Params) ->
-                    ts_log:write_log(File, Line, ~p, Format ++ \"~~n\", Params).
+                    fw_log:write_log(File, Line, ~p, Format ++ \"~~n\", Params).
                 ", [LogLevel#log_level.method, LogLevel#log_level.prefix]);
         (_, LogLevel) ->
             io_lib:format("
@@ -91,7 +91,7 @@ set_level(Limit) ->
             ?LOG_INFO("successfully built and loaded the dynamic logger", [])
     catch
         Type:Error ->
-            ts_log:write_log(?MODULE, ?LINE, "(c)", "failed to compile logger: ~p:~p", [Type, Error])
+            fw_log:write_log(?MODULE, ?LINE, "(c)", "failed to compile logger: ~p:~p", [Type, Error])
     end.
 
 build_logger(String) ->
@@ -114,7 +114,7 @@ write_log(File, Line, Prefix, Format, Params) ->
 
 
 init([]) ->
-    FN = ts_cfg:get_key(log_file),
+    FN = fw_cfg:get_key(log_file),
     case file:open(FN, [append]) of
         {ok, FD} ->
             {ok, #state{fn = FN, fd = FD}};

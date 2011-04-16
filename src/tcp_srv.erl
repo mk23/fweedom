@@ -1,4 +1,4 @@
-%% @author Max Kalika <max.kalika+telenphone@gmail.com>
+%% @author Max Kalika <max.kalika+framework@gmail.com>
 %% @copyright 2011
 %% @version {@version}
 %% @since 1.0.0
@@ -7,7 +7,7 @@
 %%   <a href="http://www.erlang.org/doc/man/gen_tcp.html" target="_blank">Erlang TCP</a>
 %%   documentation for more information.
 %%
-%% @doc telephone-server - TCP worker
+%% @doc Application Framework - TCP worker
 %%   This module provides all necessary callbacks to create a TCP connection hanlding server.
 %%   The initializer returns a timeout of 0 to the gen_server controller which immediatly sends
 %%   a timeout message to the handler, causing it to wait for a new connection.
@@ -15,7 +15,7 @@
 %% TODO: function edocs
 %% TODO: function eunits
 
--module(tcp_server).
+-module(tcp_srv).
 
 -behaviour(gen_server).
 
@@ -35,11 +35,12 @@
     terminate/2
 ]).
 
--include("ts.hrl").
+-include("fw.hrl").
 
 -record(state, {socket, module, client = new}).
 
 start_link(Socket) ->
+    io:format("now in here: ~p\n", [?MODULE]),
     start_link(Socket, ?MODULE).
 
 start_link(Socket, Module) ->

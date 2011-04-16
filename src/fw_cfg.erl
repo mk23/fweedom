@@ -1,15 +1,15 @@
-%% @author Max Kalika <max.kalika+telephone@gmail.com>
+%% @author Max Kalika <max.kalika+framework@gmail.com>
 %% @copyright 2011
 %% @version {@version}
 %% @since 1.0.0
 %% @reference See
-%%   <a href="http://www.erlang.org/doc/man/gen_server.html" target="_blank">OTP gen_server</a>
+%%   <a href="http://www.erlang.org/doc/man/ets.html" target="_blank">Erlang ETS</a>
 %%   documentation for more information.
 %%
-%% @doc telephone-server - Configuration utility library.
+%% @doc framework - Configuration utility library.
 %%   This module provides functions to handle global application configuration.
 
--module(ts_cfg).
+-module(fw_cfg).
 
 %% API
 -export([start/0]).
@@ -21,7 +21,7 @@
     reload/0
 ]).
 
--include("ts.hrl").
+-include("fw.hrl").
 
 %% API implementation
 start() ->
@@ -57,8 +57,8 @@ add_key(Key, Val) ->
 
 reload() ->
     try
-        {ok, Els} = file:consult(os:getenv("TS_CONFIG_FILE")),
-        {ts, Cfg} = lists:keyfind(ts, 1, Els),
+        {ok, Els} = file:consult(os:getenv("FW_CONFIG_FILE")),
+        {fw, Cfg} = lists:keyfind(fw, 1, Els),
         Fun = fun
             ({Key, Def}) ->
                 case lists:keyfind(Key, 1, Cfg) of

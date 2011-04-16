@@ -15,7 +15,7 @@
     terminate/2
 ]).
 
--include("ts.hrl").
+-include("fw.hrl").
 
 -record(state, {login, type, data}).
 
@@ -25,7 +25,7 @@ start_link(Type, Login, Data) ->
 
 init([Type, Login, Data]) ->
     ?LOG_DEBUG("created request (~p) grace period: ~p: ~p", [Type, Login, Data]),
-    {ok, #state{login = Login, type = Type, data = Data}, ts_cfg:get_key(reg_timeout) * 1000}.
+    {ok, #state{login = Login, type = Type, data = Data}, fw_cfg:get_key(reg_timeout) * 1000}.
 
 handle_info(timeout, State) ->
     ?LOG_INFO("user request (~p) grace period expired: ~p", [State#state.type, State#state.login]),
