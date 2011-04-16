@@ -40,7 +40,6 @@
 -record(state, {socket, module, client = new}).
 
 start_link(Socket) ->
-    io:format("now in here: ~p\n", [?MODULE]),
     start_link(Socket, ?MODULE).
 
 start_link(Socket, Module) ->
