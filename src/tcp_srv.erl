@@ -52,9 +52,9 @@ init([Socket, Module]) ->
 
 
 handle_info({tcp, Socket, Packet}, #state{module = Module} = State) ->
-    ?LOG_DEBUG("received data from client: ~p: ~p", [Socket, Packet]),
+    ?LOG_DEBUG("received data from client: ~p: ~9999p", [Socket, Packet]),
     Client = Module:handle_data(Socket, Packet, State#state.client),
-    ?LOG_DEBUG("new client state from handler: ~p", [Client]),
+    ?LOG_DEBUG("new client state from handler: ~9999p", [Client]),
     inet:setopts(Socket, [{active, once}]),
     {noreply, State#state{client = Client}};
 
