@@ -63,6 +63,9 @@ uri_register(Path, Module, Methods) ->
 handle_data(Socket, Packet, new) ->
     ?LOG_DEBUG("handle_data() begin new web request processing", []),
     read_packet(erlang:decode_packet(http_bin, Packet, []), #req{s = Socket});
+handle_data(Socket, Packet, {stop, normal, ok}) ->
+    ?LOG_DEBUG("handle_data() begin new web request processing for stopped client", []),
+    read_packet(erlang:decode_packet(http_bin, Packet, []), #req{s = Socket});
 handle_data(_Socket, Packet, #req{uri = #uri{path = Path}, body = Body, left = Left} = Req) when Left - size(Packet) =< 0 ->
     ?LOG_DEBUG("handle_data() reached end of data transmission for request: ~9999p", [Path]),
     handle_method(tl(Path), Req#req{body = <<Body/bytes, Packet/bytes>>, left = 0});
@@ -88,7 +91,7 @@ read_packet({ok, {http_request, Method, Request, Vsn}, Packet}, Req) ->
         [{_, Module, Methods}|_] ->
             case Methods =:= all orelse lists:member(Method, Methods) of
                 true ->
-                    ?LOG_DEBUG("read_packet() found handler for request: ~9999p: ~p", [Uri#uri.path, Module]),
+                    ?LOG_INFO("found handler for request: ~9999p: ~p", [Uri#uri.path, Module]),
                     read_packet(erlang:decode_packet(httph_bin, Packet, []), Req#req{
                         method = http_method(Method), module = Module, uri = Uri, qry = Qry, vsn = Vsn
                     });
