@@ -28,25 +28,21 @@
 
 
 start() ->
-    tcp_sup:start(?MODULE).
-%    load_handlers(application:get_key(ts, modules)).
-%
-%
-%load_handlers({ok, Mods}) ->
-%    load_handlers(Mods);
-%load_handlers(undefined) ->
-%    ?LOG_ERROR("cannot determine current application name", []);
-%load_handlers([]) ->
-%    ?LOG_INFO("finished loading request uri handlers", []);
-%load_handlers([H|T]) ->
-%    case atom_to_list(H) of
-%        [$u,$h,$_|_] ->
-%            ?LOG_DEBUG("loading request uri handler: ~p", [H]),
-%            H:start();
-%        _ ->
-%            ?LOG_DEBUG("application module is not a request uri handler: ~p", [H])
-%    end,
-%    load_handlers(T).
+    tcp_sup:start(?MODULE),
+    load_handlers(fw_cfg:get_key(web_handlers)).
+
+
+load_handlers([]) ->
+    ?LOG_INFO("finished loading request web handlers", []);
+load_handlers([H|T]) ->
+    try
+        ?LOG_DEBUG("loading request web handler module: ~p", [H]),
+        H:start()
+    catch
+        _:_ ->
+            ?LOG_ERROR("failed to load web handler module: ~p", [H])
+    end,
+    load_handlers(T).
 
 
 uri_register(Path, Module) ->
