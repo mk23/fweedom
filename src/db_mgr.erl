@@ -12,25 +12,25 @@ update_table(T) ->
     case catch mnesia:table_info(T, wild_pattern) of
         Result when is_tuple(Result) andalso T =:= element(1, Result) ->
             [{table_vsn, T, V}] = mnesia:dirty_match_object({table_vsn, T, '_'}),
-            ?LOG_INFO("update_table() upgrading table: ~p to ~p", [T, V]),
+            ?LOG_INFO("upgrading table: ~p to ~p", [T, V]),
             update_table(T, V);
         {'EXIT', {aborted, {no_exists, T, wild_pattern}}} ->
-            ?LOG_WARN("update_table() doesn't exist, creating: ~p", [T]),
+            ?LOG_WARN("doesn't exist, creating: ~p", [T]),
             update_table(T, 0)
     end.
 
 
 %% user_data
-update_table(user_data, 1) ->
-    ok;
-update_table(user_data = T, 0 = V) ->
-    Params = [
-        {type, set},
-        {disc_copies, [node()|nodes()]},
-        {attributes, record_info(fields, user_data)}
-    ],
-    {atomic, ok} = mnesia:create_table(T, Params),
-    ?BUMP_VERSION(T, V);
+%update_table(user_data, 1) ->
+%    ok;
+%update_table(user_data = T, 0 = V) ->
+%    Params = [
+%        {type, set},
+%        {disc_copies, [node()|nodes()]},
+%        {attributes, record_info(fields, user_data)}
+%    ],
+%    {atomic, ok} = mnesia:create_table(T, Params),
+%    ?BUMP_VERSION(T, V);
 
 
 %% table_vsn
