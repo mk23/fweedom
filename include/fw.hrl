@@ -9,8 +9,7 @@
     {log_file, ""},
     {log_level, error},
     {listen_port, 1123},
-    {reg_timeout, 3600}
+    {web_handlers, []}
 ]).
 
 -record(table_vsn, {name, version}).
--record(user_data, {login, email, alias, secret, created, changed}).

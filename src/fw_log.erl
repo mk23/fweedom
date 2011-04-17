@@ -3,7 +3,7 @@
 -behaviour(gen_server).
 
 -export([start/0, start_link/0]).
--export([set_level/0, set_level/1, write_log/5]).
+-export([set_level/0, set_level/1, write_log/5, flush_log/0]).
 
 -export([
     init/1,
@@ -17,6 +17,7 @@
 -include("fw.hrl").
 
 -record(log_level, {index, label, prefix, method}).
+
 -define(LOG_LEVELS, [
     #log_level{index = 0, method = log_none},
     #log_level{index = 1, prefix = "(c)", method = log_crit},
@@ -26,7 +27,7 @@
     #log_level{index = 5, prefix = "(d)", method = log_debug}
 ]).
 
--record(state, {fd = 2, fn = "", error = ""}).
+-record(state, {fd = standard_error, fn = "", error = ""}).
 
 start() ->
     ChildSpec = {?MODULE,
@@ -36,14 +37,13 @@ start() ->
         worker,
         [?MODULE]
     },
-    supervisor:start_child(fw_sup, ChildSpec),
-    set_level().
+    supervisor:start_child(fw_sup, ChildSpec).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 set_level() ->
-    set_level(fw_cfg:get_key(log_level)).
+    set_level(fw_cfg:get_key(log_level, debug)).
 
 set_level(none)          -> set_level(0);
 set_level(quiet)         -> set_level(0);
@@ -88,7 +88,7 @@ set_level(Limit) ->
 
     try build_logger(ModSrc) of
         {module, ?LOG_MODULE} ->
-            ?LOG_INFO("successfully built and loaded the dynamic logger", [])
+            ?LOG_INFO("successfully built and loaded the dynamic logger at limit ~p", [Limit])
     catch
         Type:Error ->
             fw_log:write_log(?MODULE, ?LINE, "(c)", "failed to compile logger: ~p:~p", [Type, Error])
@@ -112,15 +112,12 @@ parse_tokens([H|T], ExpAcc, ModAcc) ->
 write_log(File, Line, Prefix, Format, Params) ->
     gen_server:cast(?MODULE, {write_log, File, Line, Prefix, Format, Params}).
 
+flush_log() ->
+    gen_server:cast(?MODULE, flush_log).
 
 init([]) ->
-    FN = fw_cfg:get_key(log_file),
-    case file:open(FN, [append]) of
-        {ok, FD} ->
-            {ok, #state{fn = FN, fd = FD}};
-        {error, Reason} ->
-            {ok, #state{fn = FN, fd = standard_error, error = Reason}}
-    end.
+    set_level(),
+    {ok, #state{}, 0}.
 
 handle_cast({write_log, File, Line, Prefix, Format, Params}, State) ->
     {_, _, Ms} = Now = erlang:now(),
@@ -128,11 +125,27 @@ handle_cast({write_log, File, Line, Prefix, Format, Params}, State) ->
     io:fwrite(State#state.fd, "[~B-~2..0B-~2..0B ~2..0B:~2..0B:~2..0B.~3..0B] ~s ~s:~B - " ++ Format,
         [Yr, Mo, Dy, Hr, Mi, Se, Ms div 1000, Prefix, File, Line] ++ Params
     ),
-    {noreply, State}.
+    {noreply, State};
+
+handle_cast(flush_log, State) ->
+    ?LOG_INFO("flushing log file", []),
+    file:close(State#state.fd),
+    {noreply, State, 0}.
 
 
-handle_info(_Msg, State) ->
-    {noreply, State}.
+handle_info(timeout, _State) ->
+    case fw_cfg:get_key(log_file) of
+        FN when FN =:= undefined orelse FN =:= "" ->
+            {noreply, #state{fn = "", fd = standard_error}};
+        FN ->
+            case file:open(FN, [append]) of
+                {ok, FD} ->
+                    {noreply, #state{fn = FN, fd = FD}};
+                {error, Reason} ->
+                    ?LOG_CRIT("failed to open log file for writing: ~p: ~9999p", [FN, file:format_error(Reason)]),
+                    {noreply, #state{fn = "", fd = standard_error}}
+            end
+    end.
 
 
 handle_call(Req, _From, State) ->

@@ -25,8 +25,7 @@
 
 %% API implementation
 start() ->
-    ets:new(?MODULE, [named_table, public]),
-    reload().
+    ets:new(?MODULE, [named_table, public]).
 
 get_key(Key) ->
     get_key(Key, undefined).
@@ -38,6 +37,14 @@ get_key(Key, Def) ->
         [] ->
             Def
     end.
+
+set_key(Key = log_file, Val) ->
+    ets:insert(?MODULE, {Key, Val}),
+    fw_log:flush_log();
+
+set_key(Key = log_level, Val) ->
+    ets:insert(?MODULE, {Key, Val}),
+    fw_log:set_level(Val);
 
 set_key(Key, Val) ->
     ets:insert(?MODULE, {Key, Val}).
@@ -56,27 +63,12 @@ add_key(Key, Val) ->
     end.
 
 reload() ->
+    Fun = fun({K, V}) -> set_key(K, V) end,
     try
-        {ok, Els} = file:consult(os:getenv("FW_CONFIG_FILE")),
-        {fw, Cfg} = lists:keyfind(fw, 1, Els),
-        Fun = fun
-            ({Key, Def}) ->
-                case lists:keyfind(Key, 1, Cfg) of
-                    {Key, Val} ->
-                        set_key(Key, Val);
-                    _ ->
-                        set_key(Key, Def)
-                end;
-            (Key) ->
-                case lists:keyfind(Key, 1, Cfg) of
-                    {Key, Val} ->
-                        set_key(Key, Val);
-                    _ ->
-                        ok
-                end
-        end,
-        lists:foreach(Fun, ?CONFIG_KEYS)
+        {ok, Cfg} = file:consult(os:getenv("FW_CONFIG_FILE")),
+        lists:foreach(Fun, lists:ukeymerge(1, lists:ukeysort(1, Cfg), lists:ukeysort(1, ?CONFIG_KEYS)))
     catch
         _:_ ->
-            ok
+            ?LOG_WARN("failed to load config file, starting with defaults", []),
+            lists:foreach(Fun, ?CONFIG_KEYS)
     end.
