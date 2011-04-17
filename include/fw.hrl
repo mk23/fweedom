@@ -6,10 +6,9 @@
 -define(LOG_DEBUG(Format, Params), ?LOG_MODULE:log_debug(?MODULE, ?LINE, Format, Params)).
 
 -define(CONFIG_KEYS, [
-    {log_file, ""},
     {log_level, error},
-    {listen_port, 1123},
-    {web_handlers, []}
+    {web_handlers, []},
+    {listen_port, 1123}
 ]).
 
 -record(table_vsn, {name, version}).
