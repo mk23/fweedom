@@ -6,13 +6,12 @@
 %%   <a href="http://www.erlang.org/doc/man/ets.html" target="_blank">Erlang ETS</a>
 %%   documentation for more information.
 %%
-%% @doc framework - Configuration utility library.
-%%   This module provides functions to handle global application configuration.
+%% @doc Application Framework - Configuration utility library.
+%%   This module provides functions to handle global system configuration.
 
 -module(fw_cfg).
 
 %% API
--export([start/0]).
 -export([
     get_key/1,
     get_key/2,
@@ -23,10 +22,7 @@
 
 -include("fw.hrl").
 
-%% API implementation
-start() ->
-    ets:new(?MODULE, [named_table, public]).
-
+%% API
 get_key(Key) ->
     get_key(Key, undefined).
 
@@ -38,15 +34,8 @@ get_key(Key, Def) ->
             Def
     end.
 
-set_key(Key = log_file, Val) ->
-    ets:insert(?MODULE, {Key, Val}),
-    fw_log:flush_log();
-
-set_key(Key = log_level, Val) ->
-    ets:insert(?MODULE, {Key, Val}),
-    fw_log:set_level(Val);
-
 set_key(Key, Val) ->
+    ?LOG_DEBUG("setting config key ~p: ~9999p", [Key, Val]),
     ets:insert(?MODULE, {Key, Val}).
 
 add_key(Key, Val) ->
@@ -69,6 +58,6 @@ reload() ->
         lists:foreach(Fun, lists:ukeymerge(1, lists:ukeysort(1, Cfg), lists:ukeysort(1, ?CONFIG_KEYS)))
     catch
         _:_ ->
-            ?LOG_WARN("failed to load config file, starting with defaults", []),
+            ?LOG_ERROR("failed to load config file, starting with defaults", []),
             lists:foreach(Fun, ?CONFIG_KEYS)
     end.

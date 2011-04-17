@@ -26,11 +26,14 @@
 %%    Args = term()
 %% @doc Application behaviour start callback.  Starts the root supervisor.
 start(normal = _Type, _Args) ->
-    fw_cfg:start(),
+    ets:new(fw_cfg, [named_table, public]),
 
     {ok, Pid} = fw_sup:start_link(),
     fw_log:start(),
+
     fw_cfg:reload(),
+    fw_log:reopen(),
+    fw_log:set_level(),
 
     db_mgr:update_table(table_vsn),
     web_srv:start(),

@@ -3,7 +3,7 @@
 -behaviour(gen_server).
 
 -export([start/0, start_link/0]).
--export([set_level/0, set_level/1, write_log/5, flush_log/0]).
+-export([set_level/0, set_level/1, write_log/5, reopen/0]).
 
 -export([
     init/1,
@@ -16,6 +16,7 @@
 
 -include("fw.hrl").
 
+-record(state, {dev = standard_error}).
 -record(log_level, {index, label, prefix, method}).
 
 -define(LOG_LEVELS, [
@@ -27,8 +28,6 @@
     #log_level{index = 5, prefix = "(d)", method = log_debug}
 ]).
 
--record(state, {fd = standard_error, fn = "", error = ""}).
-
 start() ->
     ChildSpec = {?MODULE,
         {?MODULE, start_link, []},
@@ -39,11 +38,18 @@ start() ->
     },
     supervisor:start_child(fw_sup, ChildSpec).
 
+
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
+
+reopen() ->
+    ?LOG_INFO("flushing log file", []),
+    gen_server:cast(?MODULE, flush_log).
+
+
 set_level() ->
-    set_level(fw_cfg:get_key(log_level, debug)).
+    set_level(fw_cfg:get_key(log_level)).
 
 set_level(none)          -> set_level(0);
 set_level(quiet)         -> set_level(0);
@@ -52,6 +58,7 @@ set_level(crit)          -> set_level(1);
 set_level(critical)      -> set_level(1);
 set_level(err)           -> set_level(2);
 set_level(error)         -> set_level(2);
+set_level(severe)        -> set_level(2);
 set_level(warn)          -> set_level(3);
 set_level(warning)       -> set_level(3);
 set_level(info)          -> set_level(4);
@@ -59,6 +66,9 @@ set_level(information)   -> set_level(4);
 set_level(informational) -> set_level(4);
 set_level(debug)         -> set_level(5);
 set_level(verbose)       -> set_level(5);
+
+set_level(Limit) when not is_integer(Limit) orelse not (Limit >= 0 andalso Limit =< length(?LOG_LEVELS) + 1) ->
+    set_level(error);
 
 set_level(Limit) ->
     LogFun = fun
@@ -112,40 +122,37 @@ parse_tokens([H|T], ExpAcc, ModAcc) ->
 write_log(File, Line, Prefix, Format, Params) ->
     gen_server:cast(?MODULE, {write_log, File, Line, Prefix, Format, Params}).
 
-flush_log() ->
-    gen_server:cast(?MODULE, flush_log).
+open_file(File) when is_list(File) ->
+    {ok, _} = file:open(File, [append]).
 
 init([]) ->
     set_level(),
-    {ok, #state{}, 0}.
+    {ok, #state{}}.
+
 
 handle_cast({write_log, File, Line, Prefix, Format, Params}, State) ->
     {_, _, Ms} = Now = erlang:now(),
     {{Yr, Mo, Dy},{Hr, Mi, Se}} = calendar:now_to_local_time(Now),
-    io:fwrite(State#state.fd, "[~B-~2..0B-~2..0B ~2..0B:~2..0B:~2..0B.~3..0B] ~s ~s:~B - " ++ Format,
+    io:fwrite(State#state.dev, "[~B-~2..0B-~2..0B ~2..0B:~2..0B:~2..0B.~3..0B] ~s ~s:~B - " ++ Format,
         [Yr, Mo, Dy, Hr, Mi, Se, Ms div 1000, Prefix, File, Line] ++ Params
     ),
     {noreply, State};
 
 handle_cast(flush_log, State) ->
-    ?LOG_INFO("flushing log file", []),
-    file:close(State#state.fd),
-    {noreply, State, 0}.
-
-
-handle_info(timeout, _State) ->
-    case fw_cfg:get_key(log_file) of
-        FN when FN =:= undefined orelse FN =:= "" ->
-            {noreply, #state{fn = "", fd = standard_error}};
-        FN ->
-            case file:open(FN, [append]) of
-                {ok, FD} ->
-                    {noreply, #state{fn = FN, fd = FD}};
-                {error, Reason} ->
-                    ?LOG_CRIT("failed to open log file for writing: ~p: ~9999p", [FN, file:format_error(Reason)]),
-                    {noreply, #state{fn = "", fd = standard_error}}
-            end
+    file:close(State#state.dev),
+    try open_file(fw_cfg:get_key(log_file)) of
+        {ok, Dev} ->
+            ?LOG_INFO("opened log file for writing", []),
+            {noreply, State#state{dev = Dev}}
+    catch
+        _:_ ->
+            ?LOG_ERROR("failed to open log file for writing, using stderr", []),
+            {noreply, State#state{}}
     end.
+
+
+handle_info(_Msg, State) ->
+    {noreply, State}.
 
 
 handle_call(Req, _From, State) ->
@@ -154,6 +161,7 @@ handle_call(Req, _From, State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
 
 terminate(Reason, _State) ->
     {ok, Reason}.
