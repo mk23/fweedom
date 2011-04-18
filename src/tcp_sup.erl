@@ -25,8 +25,10 @@
 
 -include("fw.hrl").
 
+
 start() ->
     start(tcp_srv).
+
 
 start(Module) ->
     ChildSpec = {?MODULE,
@@ -39,6 +41,7 @@ start(Module) ->
     supervisor:start_child(fw_sup, ChildSpec),
     start_child().
 
+
 %% @spec start_link(Module) -> {ok, pid()}
 %% where
 %%    Module = atom()
@@ -47,10 +50,12 @@ start(Module) ->
 start_link(Module) ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, [Module]).
 
+
 %% @spec start_child() -> {ok, pid()}
 %% @doc Called by TCP worker handlers to start new handlers.
 start_child() ->
     supervisor:start_child(?MODULE, []).
+
 
 %% @spec init(Args) -> {ok, supervisor_result()}
 %% where
@@ -62,6 +67,6 @@ init([Module] = _Args) ->
     SocketParams = [binary, {active, false}, {reuseaddr, true}],
     {ok, Socket} = gen_tcp:listen(fw_cfg:get_key(listen_port), SocketParams),
 
-    Server = {tcp_srv, {tcp_srv, start_link, [Socket, Module]},
+    Server = {tcp_srv, {tcp_srv, start_link, [Socket, Module, fw_cfg:get_key(data_timeout)]},
               temporary, brutal_kill, worker, [tcp_srv]},
     {ok, {{simple_one_for_one, 0, 1}, [Server]}}.

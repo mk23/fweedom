@@ -8,7 +8,8 @@
 -define(CONFIG_KEYS, [
     {log_level, error},
     {web_handlers, []},
-    {listen_port, 1123}
+    {listen_port, 1123},
+    {data_timeout, infinity}
 ]).
 
 -record(table_vsn, {name, version}).
