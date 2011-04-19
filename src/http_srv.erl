@@ -10,14 +10,14 @@
 %%   This module provides functions to handle a subset of HTTP/1.1 requests and dispatches
 %%   them to registered uri handlers implemented by other modules.
 
--module(web_srv).
+-module(http_srv).
 
 %% API
 -export([start/0]).
 -export([parse_qstring/1]).
 -export([send_packet/2, send_packet/3, send_packet/4]).
 
-%% web_srv interface
+%% http_srv interface
 -export([uri_register/2, uri_register/3]).
 
 %% tcp_srv callback
