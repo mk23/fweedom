@@ -117,7 +117,6 @@ read_packet({ok, {http_error, Err}, _}, Req) ->
     {stop, normal, ok}.
 
 
-
 send_packet(Socket, Code) ->
     send_packet(Socket, Code, <<>>).
 send_packet(Socket, Code, Body) ->
