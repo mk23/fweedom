@@ -110,7 +110,12 @@ read_packet({ok, {http_header, _, <<"Expect">> = Key, _, <<"100-continue">> = Va
     read_packet(erlang:decode_packet(httph_bin, Packet, []), Req#req{head = [{Key, Val}|Head]});
 read_packet({ok, {http_header, _, Key, _, Val}, Packet}, #req{head = Head} = Req) ->
     ?LOG_DEBUG("read_packet() extracted header: ~9999p: ~9999p", [Key, Val]),
-    read_packet(erlang:decode_packet(httph_bin, Packet, []), Req#req{head = [{Key, Val}|Head]}).
+    read_packet(erlang:decode_packet(httph_bin, Packet, []), Req#req{head = [{Key, Val}|Head]});
+read_packet({ok, {http_error, Err}, _}, Req) ->
+    ?LOG_DEBUG("read_packet() extracted bad http packet: ~9999p", [Err]),
+    send_packet(Req#req.s, 400),
+    {stop, normal, ok}.
+
 
 
 send_packet(Socket, Code) ->
