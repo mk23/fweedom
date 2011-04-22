@@ -40,20 +40,20 @@
 -record(state, {socket, module, client = new, accept = true, timeout = infinity}).
 
 start_link(Socket) ->
-    start_link(Socket, ?MODULE, infinity).
+    start_link(infinity, ?MODULE, Socket).
 
-start_link(Socket, Module) when is_atom(Module) ->
-    start_link(Socket, Module, infinity);
+start_link(Module, Socket) when is_atom(Module) ->
+    start_link(infinity, Module, Socket);
 
-start_link(Socket, Timeout) when is_integer(Timeout) andalso Timeout > 0 ->
-    start_link(Socket, ?MODULE, Timeout).
+start_link(Timeout, Socket) when is_integer(Timeout) andalso Timeout > 0 ->
+    start_link(Timeout, ?MODULE, Socket).
 
-start_link(Socket, Module, Timeout) ->
+start_link(Timeout, Module, Socket) ->
     ?LOG_DEBUG("starting tcp server for: ~p", [Module]),
-    gen_server:start_link(?MODULE, [Socket, Module, Timeout], []).
+    gen_server:start_link(?MODULE, [Timeout, Module, Socket], []).
 
 
-init([Socket, Module, Timeout]) ->
+init([Timeout, Module, Socket]) ->
     {ok, #state{socket = Socket, module = Module, timeout = Timeout}, 0}.
 
 
@@ -68,12 +68,17 @@ handle_info({tcp_closed, Socket}, State) ->
     ?LOG_INFO("client disconnected: ~p", [Socket]),
     {stop, normal, State};
 
-handle_info(timeout, #state{accept = true, timeout = Timeout} = State) ->
-    {ok, Socket} = gen_tcp:accept(State#state.socket),
-    ?LOG_INFO("new client connected: ~p", [Socket]),
-    tcp_sup:start_child(),
-    inet:setopts(Socket, [{active, once}]),
-    {noreply, State#state{socket = Socket, accept = false}, Timeout};
+handle_info(timeout, #state{accept = true, module = Module, timeout = Timeout} = State) ->
+    case gen_tcp:accept(State#state.socket) of
+        {ok, Socket} ->
+            ?LOG_INFO("new client connected: ~p", [Socket]),
+            tcp_sup:start_child(Module),
+            inet:setopts(Socket, [{active, once}]),
+            {noreply, State#state{socket = Socket, accept = false}, Timeout};
+        {error, closed} ->
+            ?LOG_INFO("socket closed in accept state: ~p", [State#state.socket]),
+            {stop, normal, State}
+    end;
 
 handle_info(timeout, #state{accept = false} = State) ->
     ?LOG_INFO("socket read timeout: ~p", [State#state.socket]),

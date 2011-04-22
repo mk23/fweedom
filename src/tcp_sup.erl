@@ -18,7 +18,7 @@
 -behaviour(supervisor).
 
 %% API
--export([start/0, start/1, start_link/1, start_child/0]).
+-export([start/0, start/1, reload/1, start_link/1, start_child/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -31,15 +31,32 @@ start() ->
 
 
 start(Module) ->
-    ChildSpec = {?MODULE,
+    ChildSpec = {Module,
         {?MODULE, start_link, [Module]},
-        permanent,
-        infinity,
-        supervisor,
-        [?MODULE]
+        permanent, infinity, supervisor, [?MODULE]
     },
     supervisor:start_child(fw_sup, ChildSpec),
-    start_child().
+    start_child(Module).
+
+
+reload(Module) ->
+    remove_server(Module),
+    create_server(Module),
+    start_child(Module).
+
+
+create_server(Module) ->
+    SocketParams = [binary, {active, false}, {reuseaddr, true}],
+    ListenOnPort = fw_cfg:get_key(list_to_atom(lists:flatten(io_lib:format("~p_listen_port", [Module])))),
+    {ok, Socket} = gen_tcp:listen(ListenOnPort, SocketParams),
+    ?LOG_DEBUG("created a new ~p listening socket ~p on port ~p", [Module, Socket, ListenOnPort]),
+    fw_srv:new_socket(Module, Socket).
+
+remove_server(Module) ->
+    Socket = fw_srv:get_socket(Module),
+    gen_tcp:shutdown(Socket, read_write),
+    gen_tcp:close(Socket),
+    ?LOG_DEBUG("removed the ~p listening socket ~p", [Module, Socket]).
 
 
 %% @spec start_link(Module) -> {ok, pid()}
@@ -53,8 +70,8 @@ start_link(Module) ->
 
 %% @spec start_child() -> {ok, pid()}
 %% @doc Called by TCP worker handlers to start new handlers.
-start_child() ->
-    supervisor:start_child(?MODULE, []).
+start_child(Module) ->
+    supervisor:start_child(?MODULE, [fw_srv:get_socket(Module)]).
 
 
 %% @spec init(Args) -> {ok, supervisor_result()}
@@ -64,9 +81,7 @@ start_child() ->
 %% @doc Supervisor behaviour init callback.  Spawns worker processes
 %%    to handle incoming TCP connections.
 init([Module] = _Args) ->
-    SocketParams = [binary, {active, false}, {reuseaddr, true}],
-    {ok, Socket} = gen_tcp:listen(fw_cfg:get_key(listen_port), SocketParams),
-
-    Server = {tcp_srv, {tcp_srv, start_link, [Socket, Module, fw_cfg:get_key(data_timeout)]},
+    create_server(Module),
+    Server = {tcp_srv, {tcp_srv, start_link, [fw_cfg:get_key(socket_read_timeout), Module]},
               temporary, brutal_kill, worker, [tcp_srv]},
     {ok, {{simple_one_for_one, 0, 1}, [Server]}}.

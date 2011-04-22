@@ -29,7 +29,7 @@
 
 start() ->
     tcp_sup:start(?MODULE),
-    load_handlers(fw_cfg:get_key(web_handlers)).
+    load_handlers(fw_cfg:get_key(http_handlers)).
 
 
 load_handlers([]) ->

@@ -7,9 +7,10 @@
 
 -define(CONFIG_KEYS, [
     {log_level, error},
-    {web_handlers, []},
-    {listen_port, 1123},
-    {data_timeout, infinity}
+    {http_handlers, []},
+    {tcp_srv_listen_port,  1123},
+    {http_srv_listen_port, 1123},
+    {socket_read_timeout, infinity}
 ]).
 
 -record(table_vsn, {name, version}).

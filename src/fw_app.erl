@@ -30,6 +30,7 @@ start(normal = _Type, _Args) ->
 
     {ok, Pid} = fw_sup:start_link(),
     fw_log:start(),
+    fw_srv:start(),
 
     fw_cfg:reload(),
     fw_log:reopen(),
