@@ -24,7 +24,7 @@
 -export([handle_data/3]).
 
 -include("fw.hrl").
--include("ws.hrl").
+-include("http_srv.hrl").
 
 
 start() ->
@@ -70,15 +70,6 @@ handle_data(_Socket, Packet, #req{uri = #uri{path = Path}, body = Body, left = L
     Req#req{body = <<Body/bytes, Packet/bytes>>, left = Left - size(Packet)}.
 
 
-read_packet({ok, http_eoh, <<>>}, #req{uri = #uri{path = Path}, left = 0} = Req) ->
-    ?LOG_DEBUG("read_packet() reached end of headers for reqest: ~9999p", [Path]),
-    handle_method(tl(Path), Req);
-read_packet({ok, http_eoh, Body}, #req{uri = #uri{path = Path}, left = Left} = Req) when size(Body) =:= Left ->
-    ?LOG_DEBUG("read_packet() reached end of headers, read full body: ~9999p", [Path]),
-    handle_method(tl(Path), Req#req{left = 0, body = Body});
-read_packet({ok, http_eoh, Body}, #req{uri = #uri{path = Path}, left = Left} = Req) ->
-    ?LOG_DEBUG("read_packet() reached end of headers, reading body: ~9999p", [Path]),
-    Req#req{body = Body, left = Left - size(Body)};
 read_packet({ok, {http_request, Method, Request, Vsn}, Packet}, Req) ->
     {Uri, Qry} = parse_request(Request),
     ?LOG_DEBUG("read_packet() extracted request: ~9999p: ~9999p", [Method, Request]),
@@ -111,6 +102,15 @@ read_packet({ok, {http_header, _, <<"Expect">> = Key, _, <<"100-continue">> = Va
 read_packet({ok, {http_header, _, Key, _, Val}, Packet}, #req{head = Head} = Req) ->
     ?LOG_DEBUG("read_packet() extracted header: ~9999p: ~9999p", [Key, Val]),
     read_packet(erlang:decode_packet(httph_bin, Packet, []), Req#req{head = [{Key, Val}|Head]});
+read_packet({ok, http_eoh, <<>>}, #req{uri = #uri{path = Path}, left = 0} = Req) ->
+    ?LOG_DEBUG("read_packet() reached end of headers for reqest: ~9999p", [Path]),
+    handle_method(tl(Path), Req);
+read_packet({ok, http_eoh, Body}, #req{uri = #uri{path = Path}, left = Left} = Req) when size(Body) =:= Left ->
+    ?LOG_DEBUG("read_packet() reached end of headers, read full body: ~9999p", [Path]),
+    handle_method(tl(Path), Req#req{left = 0, body = Body});
+read_packet({ok, http_eoh, Body}, #req{uri = #uri{path = Path}, left = Left} = Req) ->
+    ?LOG_DEBUG("read_packet() reached end of headers, reading body: ~9999p", [Path]),
+    Req#req{body = Body, left = Left - size(Body)};
 read_packet({ok, {http_error, Err}, _}, Req) ->
     ?LOG_DEBUG("read_packet() extracted bad http packet: ~9999p", [Err]),
     send_packet(Req#req.s, 400),
@@ -224,4 +224,5 @@ handle_method(Uri, #req{s = S, method = Method, module = Module} = Req) ->
         Other ->
             send_packet(S, 500, list_to_binary(io_lib:format("~p", [Other])))
     end,
+    %% TODO: handle keep-alive connections
     {stop, normal, ok}.
