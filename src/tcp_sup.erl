@@ -68,7 +68,9 @@ start_link(Module) ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, [Module]).
 
 
-%% @spec start_child() -> {ok, pid()}
+%% @spec start_child(Module) -> {ok, pid()}
+%% where
+%%    Module = atom()
 %% @doc Called by TCP worker handlers to start new handlers.
 start_child(Module) ->
     supervisor:start_child(?MODULE, [fw_srv:get_socket(Module)]).
