@@ -22,6 +22,9 @@
 %% API
 -export([start_link/1, start_link/2, start_link/3]).
 
+%% behaviour support
+-export([behaviour_info/1]).
+
 %% tcp_server callbacks
 -export([handle_data/3]).
 
@@ -38,6 +41,14 @@
 -include("fw.hrl").
 
 -record(state, {socket, module, client = new, accept = true, timeout = infinity}).
+
+
+behaviour_info(callbacks) ->
+    [{handle_data,3}];
+
+behaviour_info(_Other) ->
+    undefined.
+
 
 start_link(Socket) ->
     start_link(infinity, ?MODULE, Socket).

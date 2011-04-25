@@ -23,7 +23,7 @@ endif
 all:	build
 
 build:	$(VSN_FILE) $(APP_FILE) $(EMK_FILE)
-	erl -make
+	erl -pa $(EBIN_DIR) -make
 	$(RUN_TEST)
 
 tests:	$(TEST_DIR)

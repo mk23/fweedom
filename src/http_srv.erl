@@ -12,6 +12,8 @@
 
 -module(http_srv).
 
+-behaviour(tcp_srv).
+
 %% API
 -export([start/0]).
 -export([parse_qstring/1]).
