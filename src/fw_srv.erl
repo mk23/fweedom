@@ -43,12 +43,14 @@ get_socket(Module) ->
 
 
 init([]) ->
+    ?LOG_DEBUG("started socket server", []),
     {ok, #state{dict = dict:new()}}.
 
 
 handle_call({get_socket, Module}, _From, State) ->
     case catch dict:fetch(Module, State#state.dict) of
         Socket when is_port(Socket) ->
+            ?LOG_DEBUG("fetched socket: ~p for ~p", [Socket, Module]),
             {reply, Socket, State};
         _ ->
             {reply, {error, not_found}, State}
@@ -56,6 +58,7 @@ handle_call({get_socket, Module}, _From, State) ->
 
 
 handle_cast({new_socket, Module, Socket}, State) ->
+    ?LOG_DEBUG("storing socket: ~p for ~p", [Socket, Module]),
     {noreply, #state{dict = dict:store(Module, Socket, State#state.dict)}}.
 
 
