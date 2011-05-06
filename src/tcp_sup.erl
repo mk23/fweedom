@@ -48,15 +48,16 @@ reload(Module) ->
 create_server(Module) ->
     SocketParams = [binary, {active, false}, {reuseaddr, true}],
     ListenOnPort = fw_cfg:get_key(list_to_atom(lists:flatten(io_lib:format("~p_listen_port", [Module])))),
+    ?LOG_DEBUG("attempting to listen on tcp port: ~p", [ListenOnPort]);
     {ok, Socket} = gen_tcp:listen(ListenOnPort, SocketParams),
-    ?LOG_DEBUG("created a new ~p listening socket ~p on port ~p", [Module, Socket, ListenOnPort]),
+    ?LOG_INFO("created a new ~p listening socket ~p on port ~p", [Module, Socket, ListenOnPort]),
     fw_srv:new_socket(Module, Socket).
 
 remove_server(Module) ->
     Socket = fw_srv:get_socket(Module),
     gen_tcp:shutdown(Socket, read_write),
     gen_tcp:close(Socket),
-    ?LOG_DEBUG("removed the ~p listening socket ~p", [Module, Socket]).
+    ?LOG_INFO("removed the ~p listening socket ~p", [Module, Socket]).
 
 
 %% @spec start_link(Module) -> {ok, pid()}
@@ -65,6 +66,7 @@ remove_server(Module) ->
 %% @doc Called by the root supervisor and starts the TCP supervisor process.
 %%    Calls {@module}:init/1 in the spawned process.
 start_link(Module) ->
+    ?LOG_INFO("staring tcp supervisor: ", [Module]),
     supervisor:start_link({local, ?MODULE}, ?MODULE, [Module]).
 
 
