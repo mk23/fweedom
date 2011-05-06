@@ -37,4 +37,4 @@ start_link() ->
 %% @doc Supervisor behaviour init callback. Starts the TCP listener supervisor,
 %%    the store server worker, and the stats server worker.
 init([] = _Args) ->
-    {ok, {{one_for_one, 0, 1}, []}}.
+    {ok, {{one_for_one, 1, 10}, []}}.
