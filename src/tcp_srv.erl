@@ -70,10 +70,15 @@ init([Timeout, Module, Socket]) ->
 
 handle_info({tcp, Socket, Packet}, #state{module = Module, timeout = Timeout} = State) ->
     ?LOG_DEBUG("received data from client: ~p: ~9999p", [Socket, Packet]),
-    Client = Module:handle_data(Socket, Packet, State#state.client),
-    ?LOG_DEBUG("new client state from handler: ~9999p", [Client]),
-    inet:setopts(Socket, [{active, once}]),
-    {noreply, State#state{client = Client}, Timeout};
+    case Module:handle_data(Socket, Packet, State#state.client) of
+        disconnect ->
+            ?LOG_DEBUG("handler requested socket disconnect", []),
+            {stop, normal, State};
+        Client ->
+            ?LOG_DEBUG("new client state from handler: ~9999p", [Client]),
+            inet:setopts(Socket, [{active, once}]),
+            {noreply, State#state{client = Client}, Timeout}
+    end;
 
 handle_info({tcp_closed, Socket}, State) ->
     ?LOG_INFO("client disconnected: ~p", [Socket]),
@@ -112,5 +117,10 @@ terminate(Reason, _State) ->
     {ok, Reason}.
 
 
-handle_data(Socket, Packet, _Client) ->
-    gen_tcp:send(Socket, Packet).
+handle_data(Socket, Packet, new) ->
+    gen_tcp:send(Socket, <<"First packet: ", Packet/bytes>>),
+    used;
+
+handle_data(Socket, Packet, used) ->
+    gen_tcp:send(Socket, <<"Last packet: ", Packet/bytes>>),
+    disconnect.
