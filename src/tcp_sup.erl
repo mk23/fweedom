@@ -66,7 +66,7 @@ remove_server(Module) ->
 %% @doc Called by the root supervisor and starts the TCP supervisor process.
 %%    Calls {@module}:init/1 in the spawned process.
 start_link(Module) ->
-    ?LOG_INFO("staring tcp supervisor: ", [Module]),
+    ?LOG_INFO("starting tcp supervisor: ~p", [Module]),
     supervisor:start_link({local, ?MODULE}, ?MODULE, [Module]).
 
 
