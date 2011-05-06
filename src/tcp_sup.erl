@@ -48,7 +48,7 @@ reload(Module) ->
 create_server(Module) ->
     SocketParams = [binary, {active, false}, {reuseaddr, true}],
     ListenOnPort = fw_cfg:get_key(list_to_atom(lists:flatten(io_lib:format("~p_listen_port", [Module])))),
-    ?LOG_DEBUG("attempting to listen on tcp port: ~p", [ListenOnPort]);
+    ?LOG_DEBUG("attempting to listen on tcp port: ~p", [ListenOnPort]),
     {ok, Socket} = gen_tcp:listen(ListenOnPort, SocketParams),
     ?LOG_INFO("created a new ~p listening socket ~p on port ~p", [Module, Socket, ListenOnPort]),
     fw_srv:new_socket(Module, Socket).
