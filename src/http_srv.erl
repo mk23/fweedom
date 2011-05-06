@@ -61,9 +61,6 @@ uri_register(Path, Module, Methods) ->
 handle_data(Socket, Packet, new) ->
     ?LOG_DEBUG("handle_data() begin new web request processing", []),
     read_packet(erlang:decode_packet(http_bin, Packet, []), #req{s = Socket});
-handle_data(Socket, Packet, {stop, normal, ok}) ->
-    ?LOG_DEBUG("handle_data() begin new web request processing for stopped client", []),
-    read_packet(erlang:decode_packet(http_bin, Packet, []), #req{s = Socket});
 handle_data(_Socket, Packet, #req{uri = #uri{path = Path}, body = Body, left = Left} = Req) when Left - size(Packet) =< 0 ->
     ?LOG_DEBUG("handle_data() reached end of data transmission for request: ~9999p", [Path]),
     handle_method(tl(Path), Req#req{body = <<Body/bytes, Packet/bytes>>, left = 0});
@@ -87,12 +84,12 @@ read_packet({ok, {http_request, Method, Request, Vsn}, Packet}, Req) ->
                 false ->
                     ?LOG_DEBUG("read_packet() found unimplemented method ~p for request: ~9999p", [Method, Uri#uri.path]),
                     send_packet(Req#req.s, 501),
-                    {stop, normal, ok}
+                    disconnect
             end;
         _ ->
             ?LOG_DEBUG("read_packet() found unimplemented request: ~9999p", [Uri#uri.path]),
             send_packet(Req#req.s, 501),
-            {stop, normal, ok}
+            disconnect
     end;
 read_packet({ok, {http_header, _, 'Content-Length' = Key, _, Val}, Packet}, #req{head = Head} = Req) ->
     ?LOG_DEBUG("read_packet() extracted length: ~9999p: ~9999p", [Key, Val]),
@@ -116,7 +113,7 @@ read_packet({ok, http_eoh, Body}, #req{uri = #uri{path = Path}, left = Left} = R
 read_packet({ok, {http_error, Err}, _}, Req) ->
     ?LOG_DEBUG("read_packet() extracted bad http packet: ~9999p", [Err]),
     send_packet(Req#req.s, 400),
-    {stop, normal, ok}.
+    disconnect.
 
 
 send_packet(Socket, Code) ->
@@ -227,4 +224,4 @@ handle_method(Uri, #req{s = S, method = Method, module = Module} = Req) ->
             send_packet(S, 500, list_to_binary(io_lib:format("~p", [Other])))
     end,
     %% TODO: handle keep-alive connections
-    {stop, normal, ok}.
+    disconnect.
