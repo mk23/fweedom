@@ -34,8 +34,8 @@ update_table(T) ->
 
 
 %% table_vsn
-update_table(table_vsn, 1) ->
-    ok;
+update_table(table_vsn = T, 1 = V) ->
+    ?LOG_INFO("db upgrade complete: ~p v~p", [T, V]);
 update_table(table_vsn = T, 0 = V) ->
     Params = [
         {type, set},
