@@ -75,7 +75,7 @@ start_link(Module) ->
 %%    Module = atom()
 %% @doc Called by TCP worker handlers to start new handlers.
 start_child(Module) ->
-    supervisor:start_child(?MODULE, [fw_srv:get_socket(Module)]).
+    supervisor:start_child(Module, [fw_srv:get_socket(Module)]).
 
 
 %% @spec init(Args) -> {ok, supervisor_result()}
