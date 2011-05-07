@@ -67,7 +67,7 @@ remove_server(Module) ->
 %%    Calls {@module}:init/1 in the spawned process.
 start_link(Module) ->
     ?LOG_INFO("starting tcp supervisor: ~p", [Module]),
-    supervisor:start_link({local, ?MODULE}, ?MODULE, [Module]).
+    supervisor:start_link({local, Module}, ?MODULE, [Module]).
 
 
 %% @spec start_child(Module) -> {ok, pid()}
