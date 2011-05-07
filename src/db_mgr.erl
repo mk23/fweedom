@@ -14,7 +14,9 @@ update_table(T) ->
             [{table_vsn, T, V}] = mnesia:dirty_match_object({table_vsn, T, '_'}),
             ?LOG_INFO("upgrading table: ~p to ~p", [T, V]),
             update_table(T, V);
-        {'EXIT', {aborted, {no_exists, T, wild_pattern}}} ->
+        Error ->
+            ?LOG_DEBUG("tmp upgrade error: ~p", [Error]),
+%        {'EXIT', {aborted, {no_exists, T, wild_pattern}}} ->
             ?LOG_WARN("doesn't exist, creating: ~p", [T]),
             update_table(T, 0)
     end.
