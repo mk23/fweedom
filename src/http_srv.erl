@@ -23,7 +23,7 @@
 -export([uri_register/2, uri_register/3]).
 
 %% tcp_srv callback
--export([handle_data/3]).
+-export([handle_init/0, handle_data/3]).
 
 -include("fw.hrl").
 -include("http_srv.hrl").
@@ -58,8 +58,12 @@ uri_register(Path, Module, Methods) ->
     fw_cfg:add_key(uri_handlers, {Path, Module, Methods}).
 
 
-handle_data(Socket, Packet, new) ->
-    ?LOG_DEBUG("handle_data() begin new web request processing", []),
+handle_init() ->
+    init.
+
+
+handle_data(Socket, Packet, init) ->
+    ?LOG_DEBUG("handle_data() begin initial web request processing", []),
     read_packet(erlang:decode_packet(http_bin, Packet, []), #req{s = Socket});
 handle_data(_Socket, Packet, #req{uri = #uri{path = Path}, body = Body, left = Left} = Req) when Left - size(Packet) =< 0 ->
     ?LOG_DEBUG("handle_data() reached end of data transmission for request: ~9999p", [Path]),

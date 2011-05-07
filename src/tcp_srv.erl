@@ -25,8 +25,8 @@
 %% behaviour support
 -export([behaviour_info/1]).
 
-%% tcp_server callbacks
--export([handle_data/3]).
+%% tcp_srv callbacks
+-export([handle_init/0, handle_data/3]).
 
 %% gen_server callbacks
 -export([
@@ -40,11 +40,11 @@
 
 -include("fw.hrl").
 
--record(state, {socket, module, client = new, accept = true, timeout = infinity}).
+-record(state, {socket, module, client = init, accept = true, timeout = infinity}).
 
 
 behaviour_info(callbacks) ->
-    [{handle_data,3}];
+    [{handle_init,0},{handle_data,3}];
 
 behaviour_info(_Other) ->
     undefined.
@@ -65,7 +65,7 @@ start_link(Timeout, Module, Socket) ->
 
 
 init([Timeout, Module, Socket]) ->
-    {ok, #state{socket = Socket, module = Module, timeout = Timeout}, 0}.
+    {ok, #state{client = Module:handle_init(), socket = Socket, module = Module, timeout = Timeout}, 0}.
 
 
 handle_info({tcp, Socket, Packet}, #state{module = Module, timeout = Timeout} = State) ->
@@ -117,7 +117,10 @@ terminate(Reason, _State) ->
     {ok, Reason}.
 
 
-handle_data(Socket, Packet, new) ->
+handle_init() ->
+    init.
+
+handle_data(Socket, Packet, init) ->
     gen_tcp:send(Socket, <<"First packet: ", Packet/bytes>>),
     used;
 
