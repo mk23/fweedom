@@ -23,7 +23,7 @@ endif
 all:	build
 
 build:	$(VSN_FILE) $(APP_FILE) $(EMK_FILE)
-	erl -pa $(EBIN_DIR) -make
+	erl -pa ebin -noinput +B -eval 'case make:all() of up_to_date -> halt(0); error -> halt(1) end.'
 	$(RUN_TEST)
 
 tests:	$(TEST_DIR)
