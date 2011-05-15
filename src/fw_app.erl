@@ -36,7 +36,7 @@ start(normal = _Type, _Args) ->
     fw_log:reopen(),
     fw_log:set_level(),
 
-    db_mgr:update_table(table_vsn),
+    fw_db_mgr:start(),
     {ok, Pid}.
 
 %% @spec stop(State) -> ok

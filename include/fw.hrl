@@ -13,4 +13,5 @@
     {socket_read_timeout, infinity}
 ]).
 
--record(table_vsn, {name, version}).
+-define(FW_UPDATE_TABLE(T, V), mnesia:dirty_write({fw_tbl_vsn, T, V+1}), ?MODULE:update_table(T, V+1)).
+-record(fw_tbl_vsn, {name, version}).
