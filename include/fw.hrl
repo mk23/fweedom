@@ -5,7 +5,7 @@
 -define(LOG_INFO(Format,  Params), ?LOG_MODULE:log_info(?MODULE,  ?LINE, Format, Params)).
 -define(LOG_DEBUG(Format, Params), ?LOG_MODULE:log_debug(?MODULE, ?LINE, Format, Params)).
 
--define(CONFIG_KEYS, [
+-define(FW_CONFIG_KEYS, [
     {log_level, error},
     {http_handlers, []},
     {tcp_srv_listen_port,  1123},

@@ -17,7 +17,8 @@
     get_key/2,
     set_key/2,
     add_key/2,
-    reload/0
+    reload/0,
+    reload/1
 ]).
 
 -include("fw.hrl").
@@ -52,12 +53,15 @@ add_key(Key, Val) ->
     end.
 
 reload() ->
+    reload(?FW_CONFIG_KEYS).
+
+reload(Def) ->
     Fun = fun({K, V}) -> set_key(K, V) end,
     try
         {ok, Cfg} = file:consult(os:getenv("FW_CONFIG_FILE")),
-        lists:foreach(Fun, lists:ukeymerge(1, lists:ukeysort(1, Cfg), lists:ukeysort(1, ?CONFIG_KEYS)))
+        lists:foreach(Fun, lists:ukeymerge(1, lists:ukeysort(1, Cfg), lists:ukeysort(1, Def)))
     catch
         _:_ ->
             ?LOG_ERROR("failed to load config file, starting with defaults", []),
-            lists:foreach(Fun, ?CONFIG_KEYS)
+            lists:foreach(Fun, Def)
     end.
