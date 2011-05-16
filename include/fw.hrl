@@ -13,6 +13,28 @@
     {socket_read_timeout, infinity}
 ]).
 
--define(FW_FINISH_TABLE(T, V), update_table(T, V) -> ?LOG_INFO("table upgraded: ~p (~p)", [T, V])).
--define(FW_UPDATE_TABLE(T, V), mnesia:dirty_write({fw_tbl_vsn, T, V+1}), ?MODULE:update_table(T, V+1)).
+-define(DB_ATOMIC_TXN(F),
+    ?LOG_DEBUG("db transaction: ~p", [F]),
+    {R, V} = mnesia:transaction(F) of
+    ?LOG_DEBUG("db transaction: ~p: result: ~p: ~9999p", [F, R, V]),
+    {R, V}
+).
+
+-define(DB_ATOMIC_ACT(F, A),
+    ?LOG_DEBUG("db action: mnesia:~p() params: ~9999p", [F, A]),
+    {R, V} = apply(mnesia, F, P),
+    ?LOG_DEBUG("db action: mnesia:~p() params: ~9999p: result: ~p: ~9999p", [F, A, R, V]),
+    {R, V}
+).
+
+-define(DB_UPDATE_TBL(T, V),
+    mnesia:dirty_write({fw_tbl_vsn, T, V+1}),
+    ?MODULE:update_table(T, V+1)
+).
+
+-define(DB_FINISH_TBL(T, V),
+    update_table(T, V) ->
+        ?LOG_INFO("table upgraded: ~p (~p)", [T, V])
+).
+
 -record(fw_tbl_vsn, {name, version}).
