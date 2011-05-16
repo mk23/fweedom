@@ -15,21 +15,19 @@
 
 -define(DB_ATOMIC_TXN(F),
     ?LOG_DEBUG("db transaction: ~p", [F]),
-    {R, V} = mnesia:transaction(F) of
-    ?LOG_DEBUG("db transaction: ~p: result: ~p: ~9999p", [F, R, V]),
-    {R, V}
+    {__Res, __Val} = mnesia:transaction(F),
+    ?LOG_DEBUG("db transaction: ~p: result: ~p: ~9999p", [F, __Res, __Val])
 ).
 
 -define(DB_ATOMIC_ACT(F, A),
     ?LOG_DEBUG("db action: mnesia:~p() params: ~9999p", [F, A]),
-    {R, V} = apply(mnesia, F, A),
-    ?LOG_DEBUG("db action: mnesia:~p() params: ~9999p: result: ~p: ~9999p", [F, A, R, V]),
-    {R, V}
+    {__Res, __Val} = apply(mnesia, F, A),
+    ?LOG_DEBUG("db action: mnesia:~p() params: ~9999p: result: ~p: ~9999p", [F, A, __Res, __Val])
 ).
 
 -define(DB_UPDATE_TBL(T, V),
-    mnesia:dirty_write({fw_tbl_vsn, T, V+1}),
-    ?MODULE:update_table(T, V+1)
+    mnesia:dirty_write({fw_tbl_vsn, T, V + 1}),
+    ?MODULE:update_table(T, V + 1)
 ).
 
 -define(DB_FINISH_TBL(T, V),

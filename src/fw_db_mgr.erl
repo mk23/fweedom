@@ -9,16 +9,15 @@ start() ->
     update_table(?MODULE, fw_tbl_vsn).
 
 
+?DB_FINISH_TBL(fw_tbl_vsn, 1);
 update_table(fw_tbl_vsn = T, 0 = V) ->
     Params = [
         {type, set},
         {disc_only_copies, [node()|nodes()]},
         {attributes, record_info(fields, fw_tbl_vsn)}
     ],
-    {atomic, ok} = mnesia:create_table(T, Params),
+    ?DB_ATOMIC_ACT(create_table, [T, Params]),
     ?DB_UPDATE_TBL(T, V);
-?DB_FINISH_TBL(fw_tbl_vsn, 1);
-
 
 update_table(M, T) ->
     case catch mnesia:table_info(T, wild_pattern) of
