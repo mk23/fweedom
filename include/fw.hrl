@@ -22,7 +22,7 @@
 
 -define(DB_ATOMIC_ACT(F, A),
     ?LOG_DEBUG("db action: mnesia:~p() params: ~9999p", [F, A]),
-    {R, V} = apply(mnesia, F, P),
+    {R, V} = apply(mnesia, F, A),
     ?LOG_DEBUG("db action: mnesia:~p() params: ~9999p: result: ~p: ~9999p", [F, A, R, V]),
     {R, V}
 ).
