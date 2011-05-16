@@ -125,7 +125,14 @@ send_packet(Socket, Code) ->
 send_packet(Socket, Code, Body) ->
     send_packet(Socket, Code, [{"Content-type", "text/html"}], Body).
 send_packet(Socket, Code, Head, Body) ->
-    Binary = iolist_to_binary(Body),
+    Binary = try
+        iolist_to_binary(Body)
+    catch
+        error:badarg ->
+            ?LOG_ERROR("invalid iolist, using io_lib:format/2: ~9999p", [Body]),
+            iolist_to_binary(io_lib:format("~p", [Body]))
+    end,
+    ?LOG_DEBUG("wtf? ~9999p", [Binary]),
     Packet = [
         "HTTP/1.1 ", http_response(Code), "\r\n",
         [ [Key, ": ", Val, "\r\n"] || {Key, Val} <- [{"Content-length", integer_to_list(byte_size(Binary))}|Head] ],
@@ -220,12 +227,12 @@ parse_qstring(<<C:8, Q/bytes>>, Str, Acc) ->
 
 handle_method(Uri, #req{s = S, method = Method, module = Module} = Req) ->
     case catch Module:Method(Uri, Req) of
-        {Code, Head, Body} ->
+        {Code, Head, Body} when is_integer(Code) andalso is_list(Head) andalso is_binary(Body) ->
             send_packet(S, Code, Head, Body);
-        {Code, Body} ->
+        {Code, Body} when is_integer(Code) andalso is_binary(Body) ->
             send_packet(S, Code, Body);
         Other ->
-            send_packet(S, 500, list_to_binary(io_lib:format("~p", [Other])))
+            send_packet(S, 500, Other)
     end,
     %% TODO: handle keep-alive connections
     disconnect.
