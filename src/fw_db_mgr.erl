@@ -9,8 +9,6 @@ start() ->
     update_table(?MODULE, fw_tbl_vsn).
 
 
-update_table(fw_tbl_vsn = T, 1 = V) ->
-    ?LOG_INFO("table upgraded: ~p (~p)", [T, V]);
 update_table(fw_tbl_vsn = T, 0 = V) ->
     Params = [
         {type, set},
@@ -19,6 +17,7 @@ update_table(fw_tbl_vsn = T, 0 = V) ->
     ],
     {atomic, ok} = mnesia:create_table(T, Params),
     ?FW_UPDATE_TABLE(T, V);
+?FW_FINISH_TABLE(fw_tbl_vsn, 1);
 
 
 update_table(M, T) ->
