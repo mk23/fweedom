@@ -132,7 +132,6 @@ send_packet(Socket, Code, Head, Body) ->
             ?LOG_ERROR("invalid iolist, using io_lib:format/2: ~9999p", [Body]),
             iolist_to_binary(io_lib:format("~p", [Body]))
     end,
-    ?LOG_DEBUG("wtf? ~9999p", [Binary]),
     Packet = [
         "HTTP/1.1 ", http_response(Code), "\r\n",
         [ [Key, ": ", Val, "\r\n"] || {Key, Val} <- [{"Content-length", integer_to_list(byte_size(Binary))}|Head] ],
