@@ -152,6 +152,7 @@ http_method(_)        -> handle_other.
 http_response(100) -> "100 Continue";
 http_response(200) -> "200 OK";
 http_response(201) -> "201 Created";
+http_response(400) -> "400 Bad Request";
 http_response(401) -> "401 Forbidden";
 http_response(403) -> "403 Unauthorized";
 http_response(404) -> "404 Not Found";
